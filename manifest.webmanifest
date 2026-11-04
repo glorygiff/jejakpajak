@@ -1,0 +1,29 @@
+{
+ "name": "Jejak Pajak",
+ "short_name": "Jejak Pajak",
+ "lang": "id",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#f7f5ee",
+ "theme_color": "#1c2a6e",
+ "description": "Basis data peraturan perpajakan Indonesia: cari, telusuri silsilah, dan bandingkan ketentuan lama dengan yang baru.",
+ "icons": [
+  {
+   "src": "ikon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "ikon-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "ikon-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
