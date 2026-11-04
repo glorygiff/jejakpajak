@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-q6uYziQ7RMCfN9pRQpKVScd3NL4jvK7gP6mhTl2LoSw=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -756,6 +757,8 @@ function samarkan(s){
   return s.replace(/(?:https?:\/\/)?(?:www\.)?pbtaxand\.com\S*/gi, '').replace(/\bPB[\s.-]*TAXAND\b/gi, 'arsip publik')
           .replace(/\btaxand\b/gi, '').replace(/[ \t]{2,}/g, ' ');
 }
+// tautan dari data hanya boleh http(s); bentuk lain (mis. javascript:) dibuang
+function urlAman(u){ const t = String(u || '').trim(); return /^https?:\/\//i.test(t) ? t : ''; }
 function samarkanAturan(r){
   if(!r || typeof r !== 'object') return r;
   const o = {...r};
@@ -810,10 +813,29 @@ async function idbAll(){
   d.close(); return out;
 }
 async function idbClear(){ const d = await idbOpen(); await new Promise((res, rej) => { const tx = d.transaction(IDB.store, 'readwrite'); tx.objectStore(IDB.store).clear(); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); d.close(); }
+// Ringkasan AI yang dibuat sekali oleh pengelola data (BUAT-RINGKASAN.bat) dan dikirim lewat pembaruan data.
+// Disimpan di IndexedDB (kunci __ringkasan__) karena ukurannya bisa beberapa MB.
+let RING_DATA = {};
+async function simpanRingData(){
+  try{ const d = await idbOpen(); await new Promise((res, rej) => { const tx = d.transaction(IDB.store, 'readwrite');
+    tx.objectStore(IDB.store).put(RING_DATA, '__ringkasan__'); tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }); }
+  catch(e){ /* penyimpanan tidak tersedia: ringkasan tetap tampil selama aplikasi terbuka */ }
+}
+function gabungRingData(peta){
+  if(!peta || typeof peta !== 'object') return 0; let n = 0;
+  for(const [id, r] of Object.entries(peta)) if(r && r.teks){ RING_DATA[id] = {teks: samarkan(String(r.teks)), oleh: String(r.oleh || 'AI'), dibuat: String(r.dibuat || '')}; n++; }
+  return n;
+}
+function ambilRingData(rec){
+  const r = rec && rec.ringkasan_ai;
+  if(r && typeof r === 'object' && r.teks) RING_DATA[rec.id] = {teks: samarkan(String(r.teks)), oleh: String(r.oleh || 'AI'), dibuat: String(r.dibuat || '')};
+  if(rec) delete rec.ringkasan_ai;
+}
 async function muatNaskah(){
   try{
     const all = await idbAll();
     NASKAH_ST.meta = all.__meta__ || null; delete all.__meta__;
+    RING_DATA = (all.__ringkasan__ && typeof all.__ringkasan__ === 'object') ? all.__ringkasan__ : {}; delete all.__ringkasan__;
     for(const [id, segs] of Object.entries(all)) pasangNaskah(id, segs);
     NASKAH_ST.status = 'siap';
   }catch(e){ NASKAH_ST.status = 'tidak-tersedia'; }
@@ -994,7 +1016,7 @@ function rebuild(){
   });
   TOPICS.forEach(t => t.versi.forEach(v => BYID[v.reg] && !BYID[v.reg]._topics.includes(t.id) && BYID[v.reg]._topics.push(t.id)));
   ALL.forEach(r => {
-    const ai = RINGKASAN[r.id]?.teks || '';
+    const ai = (RINGKASAN[r.id] || RING_DATA[r.id])?.teks || '';
     r._idx = norm([r.jenis, cite(r), `${r.jenis}-${r.no}/${r.th}`, `${r.jenis} ${r.no} tahun ${r.th}`, `${r.no}/${r.th}`, r.judul, r.ringkasan, (r.poin||[]).join(' '),
       (r.tema||[]).map(themeLabel).join(' '), r.alias||'', r.berlaku||'', (r.isi_pokok||[]).join(' '), (r.kata_kunci||[]).join(' '), r.latar||'', ai].join(' | '));
     r._head = norm([r.jenis, cite(r), `${r.jenis} ${r.no} tahun ${r.th}`, r.judul, r.alias||'', (r.kata_kunci||[]).join(' ')].join(' | '));
@@ -1116,7 +1138,7 @@ function highlight(text, groups){
 }
 function ringkasSingkat(r){
   if(r.ringkasan) return r.ringkasan;
-  const ai = RINGKASAN[r.id]?.teks;
+  const ai = (RINGKASAN[r.id] || RING_DATA[r.id])?.teks;
   if(ai){ const t = ai.split('\n').map(s => s.replace(/^[#*\s-]+|\*\*/g,'').trim()).find(s => s.length > 20); if(t) return t.replace(/^tentang:\s*/i,''); }
   if(r.isi_pokok?.length) return 'Isi pokok: ' + r.isi_pokok.slice(0,4).join('; ');
   if(r.kata_kunci?.length) return 'Kata kunci: ' + r.kata_kunci.join(', ');
@@ -1834,7 +1856,7 @@ function officialSearch(r){
   return `https://www.google.com/search?q=${q}+site%3Ajdih.kemenkeu.go.id+OR+site%3Aperaturan.bpk.go.id+OR+site%3Apajak.go.id`;
 }
 function blokRingkasan(r){
-  const ai = RINGKASAN[r.id];
+  const ai = RINGKASAN[r.id] || RING_DATA[r.id];
   const bisa = AI.sample && !AI.ditolak && NASKAH[r.id];
   let isi = '';
   if(r.ringkasan) isi += `<p style="margin:0">${esc(r.ringkasan)}</p>`;
@@ -1901,7 +1923,7 @@ function openDetail(id, cariNaskah){
     ${r.latar ? `<details class="sect"><summary class="label">Latar belakang (Menimbang)</summary><p style="margin:6px 0 0">${esc(r.latar)}</p></details>` : ''}
     ${(r.info||[]).length ? `<details class="sect"><summary class="label">Info pengolahan</summary><ul class="pts small">${r.info.map(p => `<li>${esc(p)}</li>`).join('')}</ul></details>` : ''}
     ${r.cek ? '<div class="warnbox">Status atau angka pada aturan ini perlu diverifikasi ke naskah resmi.</div>' : ''}
-    <div class="filters">${r.sumber_url ? `<a class="btn small" href="${esc(r.sumber_url)}" target="_blank" rel="noopener">${/jdih\.kemenkeu/i.test(r.sumber_url) ? 'Buka di JDIH' : /bpk\.go\.id/i.test(r.sumber_url) ? 'Buka di BPK' : /pajak\.go\.id/i.test(r.sumber_url) ? 'Buka di pajak.go.id' : 'Buka sumber'} ↗</a>` : ''}<a class="btn ghost small" href="${officialSearch(r)}" target="_blank" rel="noopener">Cari naskah resmi ↗</a>${r.custom && String(r.id).startsWith('c-') ? `<button class="btn danger small" data-del="${esc(r.id)}">Hapus aturan ini</button>` : ''}</div>`;
+    <div class="filters">${urlAman(r.sumber_url) ? `<a class="btn small" href="${esc(urlAman(r.sumber_url))}" target="_blank" rel="noopener">${/jdih\.kemenkeu/i.test(r.sumber_url) ? 'Buka di JDIH' : /bpk\.go\.id/i.test(r.sumber_url) ? 'Buka di BPK' : /pajak\.go\.id/i.test(r.sumber_url) ? 'Buka di pajak.go.id' : 'Buka sumber'} ↗</a>` : ''}<a class="btn ghost small" href="${officialSearch(r)}" target="_blank" rel="noopener">Cari naskah resmi ↗</a>${r.custom && String(r.id).startsWith('c-') ? `<button class="btn danger small" data-del="${esc(r.id)}">Hapus aturan ini</button>` : ''}</div>`;
   if(N){ renderNaskahDrawer(r.id, q); $('#nk-q').oninput = e => renderNaskahDrawer(r.id, e.target.value); }
   if($('#scrim').hidden){ $('#scrim').hidden = false; $('#close').focus(); }
 }
@@ -2100,11 +2122,13 @@ async function importText(txt){
   let baru = 0, ganti = 0, gabung = 0;
   valid.forEach(x => {
     const rec = samarkanAturan({...x, status: STATUS[x.status] ? x.status : 'belum'});
-    delete rec.naskah;
+    delete rec.naskah; ambilRingData(rec);
     const i = CUSTOM.findIndex(c => c.id === rec.id);
     if(i >= 0){ CUSTOM[i] = rec; ganti++; } else { CUSTOM.push(rec); REGS.some(r => r.id === rec.id) ? gabung++ : baru++; }
   });
   const ok = saveCustom(CUSTOM);
+  if(data && !Array.isArray(data)) gabungRingData(data.ringkasan);
+  await simpanRingData();
   let pesanNaskah = '';
   const nas = data && !Array.isArray(data) && data.naskah && typeof data.naskah === 'object' ? data.naskah : null;
   if(nas){
@@ -2159,11 +2183,13 @@ async function idbHapus(ids){
 async function terapkanSelisih(p){
   (p.aturan || []).forEach(x => {
     if(!x || !x.id || !x.jenis) return;
-    const rec = samarkanAturan({...x, status: STATUS[x.status] ? x.status : 'belum'}); delete rec.naskah;
+    const rec = samarkanAturan({...x, status: STATUS[x.status] ? x.status : 'belum'}); delete rec.naskah; ambilRingData(rec);
     const i = CUSTOM.findIndex(c => c.id === rec.id); if(i >= 0) CUSTOM[i] = rec; else CUSTOM.push(rec);
   });
-  if((p.hapus || []).length){ const h = new Set(p.hapus); CUSTOM = CUSTOM.filter(c => !h.has(c.id)); }
+  if((p.hapus || []).length){ const h = new Set(p.hapus); CUSTOM = CUSTOM.filter(c => !h.has(c.id)); p.hapus.forEach(id => delete RING_DATA[id]); }
   saveCustom(CUSTOM);
+  gabungRingData(p.ringkasan); (p.hapus_ringkasan || []).forEach(id => delete RING_DATA[id]);
+  await simpanRingData();
   const nas = p.naskah && typeof p.naskah === 'object' ? p.naskah : {};
   Object.keys(nas).forEach(id => { if(Array.isArray(nas[id])) nas[id] = nas[id].map(g => Array.isArray(g) ? [g[0], samarkan(String(g[1] ?? '')), ...g.slice(2)] : g); pasangNaskah(id, nas[id]); });
   (p.hapus_naskah || []).forEach(id => delete NASKAH[id]);
