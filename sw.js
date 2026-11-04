@@ -1,7 +1,7 @@
 /* Service worker Jejak Pajak (versi web/PWA). Kerangka aplikasi disimpan supaya bisa dibuka tanpa internet.
    index.html diambil dari jaringan lebih dulu (maks. 4 detik) supaya perbaikan aplikasi langsung sampai;
    data aturan diambil aplikasi sendiri dari GitHub dan disimpan di IndexedDB, tidak lewat sini. */
-const CACHE = 'jejak-pajak-2300c84d74';
+const CACHE = 'jejak-pajak-ec3475e108';
 const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(INTI)).then(() => self.skipWaiting()));
