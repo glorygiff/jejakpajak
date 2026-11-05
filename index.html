@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-jRxh62UQGX6U4hTOPn7UVgWGgU0ymAVdmk/sRksGTIQ=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-Dqgb8VKqMv4x0TnzmX5/siIsQ2nrDzGFwRmXTCTKSxg=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -854,11 +854,19 @@ function gabungBandData(peta){
 }
 function hapusBandData(daftar){ (daftar || []).forEach(k => delete BAND_DATA[k]); }
 function bandingSiap(ia, ib, kw){
-  // dipakai bila belum ada hasil susunan sendiri untuk pasangan ini dan kata kunci kosong
-  if(norm(kw || '').trim()) return null;
+  // dipakai bila belum ada hasil susunan sendiri untuk pasangan ini. Dengan kata kunci: hanya aspek yang nama,
+  // catatan, atau kutipannya memuat kata kunci itu (tanpa API); bila tidak ada yang cocok, null.
   const d = BAND_DATA[ia + '|' + ib]; if(!d) return null;
-  return {kunci: kunciKurasi(ia, ib, ''), a: ia, b: ib, kw: '', dibuat: d.dibuat, oleh: d.oleh, simpan: false, siap: true,
-    cakupan: d.cakupan ? JSON.parse(JSON.stringify(d.cakupan)) : null, aspek: JSON.parse(JSON.stringify(d.aspek))};
+  let aspek = JSON.parse(JSON.stringify(d.aspek)), saring = null;
+  const groups = norm(kw || '').trim() ? parseQuery(kw) : [];
+  if(groups.length){
+    const cocok = aspek.filter(x => { const hay = norm([x.nama, x.catatan, x.lama && x.lama.kutipan, x.baru && x.baru.kutipan].filter(Boolean).join(' '));
+      return groups.every(grp => grp.some(a => matchAlt(hay, a))); });
+    if(!cocok.length) return null;
+    saring = {cocok: cocok.length, total: aspek.length}; aspek = cocok;
+  }
+  return {kunci: kunciKurasi(ia, ib, kw || ''), a: ia, b: ib, kw: kw || '', dibuat: d.dibuat, oleh: d.oleh, simpan: false, siap: true, saring,
+    cakupan: d.cakupan ? JSON.parse(JSON.stringify(d.cakupan)) : null, aspek};
 }
 function ambilRingData(rec){
   const r = rec && rec.ringkasan_ai;
@@ -1674,20 +1682,22 @@ function blokKurasi(ia, ib, kw, keterangan){
     const ck = x.cakupan, ckTeks = ck ? [['a', x.a], ['b', x.b]].map(([s, id]) => `${ck[s].kirim} dari ${ck[s].total} bagian ${esc(cite(BYID[id]))}`).join(' dan ') : '';
     const tak = ck ? [...ck.a.lewat, ...ck.b.lewat].length : 0;
     return `<div class="kurasi" id="kurasi">
-      <p class="sub">Disusun ${esc(x.oleh || 'AI')} dari naskah · ${x.aspek.length} aspek · ${esc(fmtTgl(x.dibuat))}${x.siap ? ' · disiapkan bersama pembaruan data' : ''}</p>
+      ${x.siap && x.saring ? `<p class="sub">Disaring dari perbandingan siap pakai: <b>${x.saring.cocok} dari ${x.saring.total} aspek</b> memuat “${esc(x.kw)}” · disusun ${esc(x.oleh || 'AI')} untuk isi keseluruhan kedua aturan, bukan khusus topik ini · ${esc(fmtTgl(x.dibuat))}</p>`
+        : `<p class="sub">Disusun ${esc(x.oleh || 'AI')} dari naskah · ${x.aspek.length} aspek · ${esc(fmtTgl(x.dibuat))}${x.siap ? ' · disiapkan bersama pembaruan data' : ''}</p>`}
       <div class="ring">${ring}${ragu ? `<span class="stat cek">${ragu} perlu diperiksa</span>` : ''}</div>
       ${ck ? `<p class="chain" style="margin:0">AI membaca ${ckTeks}${tak ? `. <b>${tak} bagian belum dibaca</b> karena batas panjang: ${esc([...ck.a.lewat, ...ck.b.lewat].slice(0, 8).join(', '))}${tak > 8 ? ', …' : ''}` : '; semua bagian yang relevan sudah dibaca utuh'}.</p>` : ''}
       ${ck && tak && bisa ? (() => { const n = rencanaSisa(x).length; return `<div class="sisa"><button class="btn" data-bacasisa="${esc(k)}">Baca sisa ${tak} bagian (${n} kiriman tambahan)</button><div id="sisa-status" class="sisa-status"></div><p class="chain" style="margin:0">Setiap kiriman memakai API seperti satu kali Bandingkan. Aspek baru dari sisa naskah ditambahkan ke daftar di bawah.</p></div>`; })() : ''}
       ${ragu ? `<div class="warnbox">${ragu} aspek berstatus Dihapus/Baru ternyata masih punya bagian yang mirip di aturan pasangannya. Buka aspek bertanda <b>Periksa</b> sebelum memakai hasil ini.</div>` : ''}
       ${x.aspek.map((a, i) => kartuAspek(x, a, i)).join('')}
-      <div class="filters"><button class="btn" data-simpankurasi="${esc(k)}">${x.simpan ? 'Tersimpan di Kurasi saya ✓' : 'Simpan sebagai kurasi'}</button>${bisa ? `<button class="btn ghost" data-susun="${esc(ia)}|${esc(ib)}">Buat ulang</button>` : ''}</div>
+      <div class="filters"><button class="btn" data-simpankurasi="${esc(k)}">${x.simpan ? 'Tersimpan di Kurasi saya ✓' : 'Simpan sebagai kurasi'}</button>${bisa ? `<button class="btn ghost" data-susun="${esc(ia)}|${esc(ib)}">${x.siap && x.saring ? `Susun khusus “${esc(x.kw)}” dengan ${esc(namaAI())}` : 'Buat ulang'}</button>` : ''}</div>
+      ${x.siap && x.saring && !bisa ? '<p class="chain" style="margin:0">Untuk melihat semua aspek, kosongkan kolom topik lalu tekan Bandingkan. Bagian naskah yang menyebut kata kunci ini tetap bisa dibandingkan kata per kata di bawah.</p>' : ''}
       ${x.simpan ? '<p class="chain" style="margin:0">Ketuk tombol di atas lagi untuk menghapusnya dari Kurasi saya.</p>' : ''}
     </div>`;
   }
   if(x && x.mentah) return `<div class="kurasi" id="kurasi"><div class="warnbox">${esc(x.oleh || 'AI')} tidak mengembalikan format yang bisa dibaca. Jawabannya ditampilkan apa adanya.</div><div class="md-out">${mdLite(x.mentah)}</div>${bisa ? `<div class="filters"><button class="btn" data-susun="${esc(ia)}|${esc(ib)}">Coba lagi</button></div>` : ''}</div>`;
   return `<div class="kurasi" id="kurasi"><p class="sub">${esc(keterangan)}</p>
     ${bisa ? `<div class="load" id="kurasi-isi"><p style="margin:0">${esc(namaAI())} dapat memilah bagian-bagian itu dan menyusunnya menjadi beberapa aspek singkat (berubah, baru, dihapus) dengan kutipan dari kedua naskah.</p><div class="filters"><button class="btn" data-susun="${esc(ia)}|${esc(ib)}">Susun perbandingan dengan ${esc(namaAI())}</button></div></div>`
-      : `<div class="load"><p style="margin:0">${AI.android ? 'Penyusunan otomatis memerlukan API key AI. Atur di tab Data &amp; AI.' : 'Penyusunan otomatis dengan AI saat ini hanya tersedia di aplikasi Android.'} Bagian-bagian naskah tetap bisa dibandingkan kata per kata di bawah.${BAND_DATA[ia + '|' + ib] && norm(kw || '').trim() ? ' <b>Perbandingan isi keseluruhan untuk pasangan ini sudah tersedia: kosongkan kolom topik lalu tekan Bandingkan.</b>' : ''}</p></div>`}
+      : `<div class="load"><p style="margin:0">${AI.android ? 'Penyusunan otomatis memerlukan API key AI. Atur di tab Data &amp; AI.' : 'Penyusunan otomatis dengan AI saat ini hanya tersedia di aplikasi Android.'} Bagian-bagian naskah tetap bisa dibandingkan kata per kata di bawah.${BAND_DATA[ia + '|' + ib] && norm(kw || '').trim() ? ` <b>Perbandingan siap pakai untuk pasangan ini tidak memuat aspek tentang “${esc(kw)}”. Kosongkan kolom topik lalu tekan Bandingkan untuk melihat perbandingan isi keseluruhannya.</b>` : ''}</p></div>`}
   </div>`;
 }
 async function susunKurasi(ia, ib, kw){
