@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-q6uYziQ7RMCfN9pRQpKVScd3NL4jvK7gP6mhTl2LoSw=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-+7xO9mTXfiTF/HbZUSCW667FdMuIHPjMbreMkkObzLQ=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -133,6 +133,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .seg button[aria-pressed="true"]{background:var(--sunk);color:var(--ink);font-weight:600}
 .diffstat{font-family:var(--f-mono);font-size:12.5px;display:flex;gap:12px}
 .diffstat .a{color:var(--ok)} .diffstat .d{color:var(--bad)}
+.rel .siap{color:var(--ok);font-size:12.5px;white-space:nowrap}
 .sides{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:700px){ .sides{grid-template-columns:1fr} }
 .side{border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0;background:var(--paper)}
@@ -775,7 +776,12 @@ let ALL = [], BYID = {};
 let RINGKASAN = loadJSON(RING_KEY, {}) || {};   // id -> {teks, dibuat}
 let BANDING = loadJSON(BAND_KEY, {}) || {};     // kunci -> {a, b, kw, teks, dibuat}
 const KUR_KEY = 'jejak-aturan-pajak:kurasi:v1';
-let KURASI = loadJSON(KUR_KEY, {}) || {};       // kunci -> {kunci, a, b, kw, aspek:[…], dibuat, oleh, simpan}
+// Bagian data yang dikenali aplikasi ini: 1 = ringkasan AI, 2 = perbandingan siap pakai. Data yang dulu diambil oleh
+// aplikasi lebih lama diambil ulang sekali secara lengkap supaya bagian yang dulu diabaikan ikut tersimpan.
+const FORMAT_DATA = 2;
+let KURASI = loadJSON(KUR_KEY, {}) || {};
+// perbandingan siap pakai (dari pengelola data) hanya disimpan di HP bila pengguna menyimpannya sebagai kurasi atau menambahkannya
+function simpanKur(){ return saveJSON(KUR_KEY, Object.fromEntries(Object.entries(KURASI).filter(([k, v]) => !(v && v.siap && !v.simpan)))); }       // kunci -> {kunci, a, b, kw, aspek:[…], dibuat, oleh, simpan}
 
 /* ===== Naskah (isi pasal/bagian) di IndexedDB browser ini ===== */
 const NASKAH = {};            // id -> {segs:[{l,t,n}], full}
@@ -826,6 +832,34 @@ function gabungRingData(peta){
   for(const [id, r] of Object.entries(peta)) if(r && r.teks){ RING_DATA[id] = {teks: samarkan(String(r.teks)), oleh: String(r.oleh || 'AI'), dibuat: String(r.dibuat || '')}; n++; }
   return n;
 }
+// Perbandingan siap pakai (BUAT-PERBANDINGAN.bat): {"lama|baru": {aspek:[…], oleh, dibuat, cakupan}}, IndexedDB kunci __banding__.
+let BAND_DATA = {};
+async function simpanBandData(){
+  try{ const d = await idbOpen(); await new Promise((res, rej) => { const tx = d.transaction(IDB.store, 'readwrite');
+    tx.objectStore(IDB.store).put(BAND_DATA, '__banding__'); tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }); }
+  catch(e){ /* penyimpanan tidak tersedia */ }
+}
+function gabungBandData(peta){
+  if(!peta || typeof peta !== 'object') return 0; let n = 0;
+  for(const [k, r] of Object.entries(peta)){
+    const [a, b] = String(k).split('|'); if(!a || !b || !r || !Array.isArray(r.aspek)) continue;
+    const aspek = rapikanAspek({aspek: r.aspek.map(x => x && typeof x === 'object' ? {...x,
+      lama: x.lama && x.lama.kutipan ? {...x.lama, kutipan: samarkan(String(x.lama.kutipan))} : null,
+      baru: x.baru && x.baru.kutipan ? {...x.baru, kutipan: samarkan(String(x.baru.kutipan))} : null} : x)});
+    if(!aspek.length) continue;
+    const ck = r.cakupan && r.cakupan.a && r.cakupan.b ? r.cakupan : null;
+    BAND_DATA[a + '|' + b] = {aspek, oleh: String(r.oleh || 'AI'), dibuat: String(r.dibuat || ''), cakupan: ck}; n++;
+  }
+  return n;
+}
+function hapusBandData(daftar){ (daftar || []).forEach(k => delete BAND_DATA[k]); }
+function bandingSiap(ia, ib, kw){
+  // dipakai bila belum ada hasil susunan sendiri untuk pasangan ini dan kata kunci kosong
+  if(norm(kw || '').trim()) return null;
+  const d = BAND_DATA[ia + '|' + ib]; if(!d) return null;
+  return {kunci: kunciKurasi(ia, ib, ''), a: ia, b: ib, kw: '', dibuat: d.dibuat, oleh: d.oleh, simpan: false, siap: true,
+    cakupan: d.cakupan ? JSON.parse(JSON.stringify(d.cakupan)) : null, aspek: JSON.parse(JSON.stringify(d.aspek))};
+}
 function ambilRingData(rec){
   const r = rec && rec.ringkasan_ai;
   if(r && typeof r === 'object' && r.teks) RING_DATA[rec.id] = {teks: samarkan(String(r.teks)), oleh: String(r.oleh || 'AI'), dibuat: String(r.dibuat || '')};
@@ -836,6 +870,7 @@ async function muatNaskah(){
     const all = await idbAll();
     NASKAH_ST.meta = all.__meta__ || null; delete all.__meta__;
     RING_DATA = (all.__ringkasan__ && typeof all.__ringkasan__ === 'object') ? all.__ringkasan__ : {}; delete all.__ringkasan__;
+    BAND_DATA = (all.__banding__ && typeof all.__banding__ === 'object') ? all.__banding__ : {}; delete all.__banding__;
     for(const [id, segs] of Object.entries(all)) pasangNaskah(id, segs);
     NASKAH_ST.status = 'siap';
   }catch(e){ NASKAH_ST.status = 'tidak-tersedia'; }
@@ -889,7 +924,7 @@ function initCaps(){
       db.collection('kurasi').onSnapshot(snap => {
         snap.docChanges().forEach(ch => { const v = ch.doc.data() || {}; const k = v.kunci || ch.doc.id;
           if(ch.type === 'removed') delete KURASI[k]; else if(Array.isArray(v.aspek)) KURASI[k] = v; });
-        saveJSON(KUR_KEY, KURASI); renderTopicList(); if(CUR.topic === BEBAS && !$('#p-bandingkan').hidden) renderCompare();
+        simpanKur(); renderTopicList(); if(CUR.topic === BEBAS && !$('#p-bandingkan').hidden) renderCompare();
       }, () => {});
       db.collection('banding').onSnapshot(snap => {
         snap.docChanges().forEach(ch => { const v = ch.doc.data() || {}; const k = v.kunci || ch.doc.id;
@@ -1567,7 +1602,7 @@ function cekSilang(rec, x){
   // kata yang ada di lebih dari 15% pasal aturan pasangan (mis. "elektronik", "laporan") tidak dihitung
   if(!N.df){ N.df = new Map(); N.segs.forEach(g => (g.kk || (g.kk = kataKhas(g.t))).forEach(w => N.df.set(w, (N.df.get(w) || 0) + 1))); }
   const jarang = w => (N.df.get(w) || 0) <= Math.max(2, N.segs.length * 0.15);
-  String(sumber.kutipan).split(/\s*(?:…|\.\.\.)\s*/).forEach(bag => {
+  String(sumber.kutipan).split(/\s*\[?\s*(?:…|\.\.\.)\s*\]?\s*/).forEach(bag => {
     const K = new Set([...kataKhas(bag)].filter(jarang)); if(K.size < 3) return;
     N.segs.forEach((g, i) => {
       const S = g.kk || (g.kk = kataKhas(g.t)); let n = 0; K.forEach(w => { if(S.has(w)) n++; });
@@ -1582,7 +1617,7 @@ function daftarKurasiSaya(){ return Object.values(KURASI).filter(x => x && x.sim
 const ratakan = s => norm(s).replace(/[“”"'‘’`]/g, '').replace(/\s+/g, ' ').trim();
 function cekKutipan(id, kutipan){
   const N = NASKAH[id]; if(!N || !kutipan) return {ok:false, label:null};
-  const potong = String(kutipan).split(/\s*(?:…|\.\.\.)\s*/).map(ratakan).filter(x => x.length >= 12);
+  const potong = String(kutipan).split(/\s*\[?\s*(?:…|\.\.\.)\s*\]?\s*/).map(ratakan).filter(x => x.length >= 12);
   if(!potong.length) return {ok:false, label:null};
   let label = null;
   const ok = potong.every(b => { const g = N.segs.find(g => (g.r ||= ratakan(g.t)).includes(b)); if(g && !label) label = g.l; return !!g; });
@@ -1617,7 +1652,7 @@ function kartuAspek(a, x, i){
   const blokSilang = silang.length ? `<div class="silang"><b>⚠ Periksa: klaim “${STATUS_ASPEK[x.status]}” mungkin keliru.</b> ${esc(cite(BYID[lawan]))} masih memuat bagian yang mirip:
       ${silang.map(t => `<button class="linkish" data-lihatnaskah="${esc(t.id)}|${esc(t.kata.slice(0, 4).join(' '))}">${esc(t.label)}</button> <span class="kk">(${Math.round(t.skor * 100)}% kata khas sama: ${esc(t.kata.slice(0, 6).join(', '))})</span>`).join(' · ')}
       ${AI.sample && !AI.ditolak ? `<div><button class="btn small" data-cekulang="${esc(a.kunci)}|${i}">Minta ${esc(namaAI())} cek ulang aspek ini</button></div>` : ''}</div>` : '';
-  const cari = (id, sisi) => sisi ? `<button class="linkish" data-lihatnaskah="${esc(id)}|${esc(ratakan(sisi.kutipan.split(/…|\.\.\./)[0]).split(' ').slice(0, 6).join(' '))}">Lihat di ${esc(cite(BYID[id]))}</button>` : '';
+  const cari = (id, sisi) => sisi ? `<button class="linkish" data-lihatnaskah="${esc(id)}|${esc(ratakan(sisi.kutipan.split(/\[?\s*(?:…|\.\.\.)\s*\]?/)[0]).split(' ').slice(0, 6).join(' '))}">Lihat di ${esc(cite(BYID[id]))}</button>` : '';
   return `<details class="asp${silang.length ? ' ragu' : ''}" ${i === 0 || silang.length ? 'open' : ''}><summary><span class="asp-n">${esc(x.nama)}</span>${silang.length ? '<span class="stat cek">Periksa</span>' : ''}<span class="stat ${x.status}">${STATUS_ASPEK[x.status]}</span></summary>
     ${x.catatan ? `<p class="cat">${esc(x.catatan)}</p>` : ''}
     <div class="q">${kepala(a.a, x.lama, ca)}<div class="qt">${kiri}</div></div>
@@ -1628,7 +1663,9 @@ function kartuAspek(a, x, i){
   </details>`;
 }
 function blokKurasi(ia, ib, kw, keterangan){
-  const k = kunciKurasi(ia, ib, kw), x = KURASI[k];
+  const k = kunciKurasi(ia, ib, kw);
+  if(!KURASI[k]){ const siap = bandingSiap(ia, ib, kw); if(siap) KURASI[k] = siap; }
+  const x = KURASI[k];
   const bisa = AI.sample && !AI.ditolak;
   if(x && Array.isArray(x.aspek) && x.aspek.length){
     const n = s => x.aspek.filter(a => a.status === s).length;
@@ -1637,7 +1674,7 @@ function blokKurasi(ia, ib, kw, keterangan){
     const ck = x.cakupan, ckTeks = ck ? [['a', x.a], ['b', x.b]].map(([s, id]) => `${ck[s].kirim} dari ${ck[s].total} bagian ${esc(cite(BYID[id]))}`).join(' dan ') : '';
     const tak = ck ? [...ck.a.lewat, ...ck.b.lewat].length : 0;
     return `<div class="kurasi" id="kurasi">
-      <p class="sub">Disusun ${esc(x.oleh || 'AI')} dari naskah · ${x.aspek.length} aspek · ${esc(fmtTgl(x.dibuat))}</p>
+      <p class="sub">Disusun ${esc(x.oleh || 'AI')} dari naskah · ${x.aspek.length} aspek · ${esc(fmtTgl(x.dibuat))}${x.siap ? ' · disiapkan bersama pembaruan data' : ''}</p>
       <div class="ring">${ring}${ragu ? `<span class="stat cek">${ragu} perlu diperiksa</span>` : ''}</div>
       ${ck ? `<p class="chain" style="margin:0">AI membaca ${ckTeks}${tak ? `. <b>${tak} bagian belum dibaca</b> karena batas panjang: ${esc([...ck.a.lewat, ...ck.b.lewat].slice(0, 8).join(', '))}${tak > 8 ? ', …' : ''}` : '; semua bagian yang relevan sudah dibaca utuh'}.</p>` : ''}
       ${ck && tak && bisa ? (() => { const n = rencanaSisa(x).length; return `<div class="sisa"><button class="btn" data-bacasisa="${esc(k)}">Baca sisa ${tak} bagian (${n} kiriman tambahan)</button><div id="sisa-status" class="sisa-status"></div><p class="chain" style="margin:0">Setiap kiriman memakai API seperti satu kali Bandingkan. Aspek baru dari sisa naskah ditambahkan ke daftar di bawah.</p></div>`; })() : ''}
@@ -1650,7 +1687,7 @@ function blokKurasi(ia, ib, kw, keterangan){
   if(x && x.mentah) return `<div class="kurasi" id="kurasi"><div class="warnbox">${esc(x.oleh || 'AI')} tidak mengembalikan format yang bisa dibaca. Jawabannya ditampilkan apa adanya.</div><div class="md-out">${mdLite(x.mentah)}</div>${bisa ? `<div class="filters"><button class="btn" data-susun="${esc(ia)}|${esc(ib)}">Coba lagi</button></div>` : ''}</div>`;
   return `<div class="kurasi" id="kurasi"><p class="sub">${esc(keterangan)}</p>
     ${bisa ? `<div class="load" id="kurasi-isi"><p style="margin:0">${esc(namaAI())} dapat memilah bagian-bagian itu dan menyusunnya menjadi beberapa aspek singkat (berubah, baru, dihapus) dengan kutipan dari kedua naskah.</p><div class="filters"><button class="btn" data-susun="${esc(ia)}|${esc(ib)}">Susun perbandingan dengan ${esc(namaAI())}</button></div></div>`
-      : `<div class="load"><p style="margin:0">${AI.android ? 'Penyusunan otomatis memerlukan API key AI. Atur di tab Data &amp; AI.' : 'Penyusunan otomatis dengan AI saat ini hanya tersedia di aplikasi Android.'} Bagian-bagian naskah tetap bisa dibandingkan kata per kata di bawah.</p></div>`}
+      : `<div class="load"><p style="margin:0">${AI.android ? 'Penyusunan otomatis memerlukan API key AI. Atur di tab Data &amp; AI.' : 'Penyusunan otomatis dengan AI saat ini hanya tersedia di aplikasi Android.'} Bagian-bagian naskah tetap bisa dibandingkan kata per kata di bawah.${BAND_DATA[ia + '|' + ib] && norm(kw || '').trim() ? ' <b>Perbandingan isi keseluruhan untuk pasangan ini sudah tersedia: kosongkan kolom topik lalu tekan Bandingkan.</b>' : ''}</p></div>`}
   </div>`;
 }
 async function susunKurasi(ia, ib, kw){
@@ -1671,7 +1708,7 @@ async function susunKurasi(ia, ib, kw){
       batas:batasKonteks()};
     if(aspek.length) rec.aspek = aspek; else { rec.aspek = []; rec.mentah = String(text || '').slice(0, 20000); }
     const lama = KURASI[rec.kunci]; if(lama && lama.simpan && aspek.length) rec.simpan = true;
-    KURASI[rec.kunci] = rec; saveJSON(KUR_KEY, KURASI); if(rec.simpan) simpanDb('kurasi', rec.kunci, rec);
+    KURASI[rec.kunci] = rec; simpanKur(); if(rec.simpan) simpanDb('kurasi', rec.kunci, rec);
     renderTopicList(); if(CUR.topic === BEBAS) renderCompare();
   }catch(e){
     const msg = pesanGalatAI(e); const el2 = $('#kurasi');
@@ -1737,13 +1774,13 @@ async function bacaSisa(kunci){
       const prompt = promptKurasi(ra, rb, rec.kw, teksA, teksB, rec.aspek.map(x => x.nama));
       const {text} = await AI.sample(prompt, {signal:ctl.signal, onText:({text}) => status(n + 1, text.length)});
       const baru = rapikanAspek(ambilJSON(text)).filter(x => !rec.aspek.some(y => namaMirip(x.nama, y.nama)));
-      rec.aspek.push(...baru); tambah += baru.length; selesai++;
+      rec.aspek.push(...baru); rec.siap = false; tambah += baru.length; selesai++;
       // tandai bagian yang sudah dibaca
       const sisi = rec.cakupan[t.sisi], dibaca = new Set(t[t.sisi]);
       sisi.lewatI = (sisi.lewatI || []).filter(i => !dibaca.has(i));
       sisi.lewat = sisi.lewatI.map(i => (t.sisi === 'a' ? Na : Nb).segs[i].l);
       sisi.kirim += dibaca.size;
-      saveJSON(KUR_KEY, KURASI);
+      simpanKur();
     }
     toast(tambah ? `${tambah} aspek baru ditemukan di sisa naskah` : 'Sisa naskah sudah dibaca; tidak ada aspek baru');
   }catch(e){
@@ -1751,7 +1788,7 @@ async function bacaSisa(kunci){
     toast(`${selesai} dari ${tugas.length} kiriman selesai. ${msg || 'Dihentikan.'}`);
   }finally{
     if(AKTIF.ctl === ctl) AKTIF.ctl = null;
-    saveJSON(KUR_KEY, KURASI); if(rec.simpan) simpanDb('kurasi', rec.kunci, rec);
+    simpanKur(); if(rec.simpan) simpanDb('kurasi', rec.kunci, rec);
     if(CUR.topic === BEBAS) renderCompare();
   }
 }
@@ -1775,7 +1812,7 @@ Kutipan wajib disalin persis dari teks; "bagian" = label dalam kurung siku. Cata
     const hasil = rapikanAspek({aspek:[ambilJSON(text)]})[0];
     if(!hasil) throw Object.assign(new Error('format'), {code:'format'});
     hasil.dicekUlang = namaAI();
-    rec.aspek[i] = hasil; saveJSON(KUR_KEY, KURASI); if(rec.simpan) simpanDb('kurasi', rec.kunci, rec);
+    rec.aspek[i] = hasil; rec.siap = false; simpanKur(); if(rec.simpan) simpanDb('kurasi', rec.kunci, rec);
     renderCompare(); toast('Aspek diperbarui setelah dicek ulang');
   }catch(e){
     if(el){ el.disabled = false; el.textContent = 'Coba cek ulang lagi'; }
@@ -1917,7 +1954,7 @@ function openDetail(id, cariNaskah){
     ${(r.isi_pokok||[]).length ? `<div class="sect"><span class="label">Isi pokok (dari susunan naskah)</span><ul class="pts">${r.isi_pokok.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
     ${(r.kata_kunci||[]).length ? `<div class="sect"><span class="label">Kata kunci khas</span><div class="chips">${r.kata_kunci.map(k => `<button class="chip small" data-cari="${esc(k)}">${esc(k)}</button>`).join('')}</div></div>` : ''}
     ${(r.poin||[]).length ? `<div class="sect"><span class="label">Poin penting</span><ul class="pts">${r.poin.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
-    ${banding.length ? `<div class="rel"><span class="label">Bandingkan isi</span>${banding.map(b => `<button class="linkish" data-banding="${b.lama}|${b.baru}" style="text-align:left">${esc(cite(BYID[b.lama]))} → ${esc(cite(BYID[b.baru]))}${NASKAH[b.lama] && NASKAH[b.baru] ? '' : ' (naskah belum lengkap)'}</button>`).join('')}</div>` : ''}
+    ${banding.length ? `<div class="rel"><span class="label">Bandingkan isi</span>${banding.map(b => `<button class="linkish" data-banding="${b.lama}|${b.baru}" style="text-align:left">${esc(cite(BYID[b.lama]))} → ${esc(cite(BYID[b.baru]))}${NASKAH[b.lama] && NASKAH[b.baru] ? (BAND_DATA[b.lama + '|' + b.baru] ? ' <span class="siap">· perbandingan siap</span>' : '') : ' (naskah belum lengkap)'}</button>`).join('')}</div>` : ''}
     ${r._topics.length ? `<div class="rel"><span class="label">Ketentuan terkurasi</span>${r._topics.map(tid => { const t = TOPICS.find(x=>x.id===tid); return `<button class="linkish" data-topicjump="${tid}" data-reg="${r.id}" style="text-align:left">${esc(t.judul)} — ${t.versi.length} versi</button>`; }).join('')}</div>` : ''}
     ${N ? `<details class="sect" ${q ? 'open' : ''}><summary class="label">Baca naskah (${N.segs.length} pasal/bagian)</summary><input type="search" id="nk-q" placeholder="Cari di naskah ini, mis. SP2DK" value="${esc(q)}" autocomplete="off"><div id="nk-list"></div></details>` : ''}
     ${r.latar ? `<details class="sect"><summary class="label">Latar belakang (Menimbang)</summary><p style="margin:6px 0 0">${esc(r.latar)}</p></details>` : ''}
@@ -2129,6 +2166,7 @@ async function importText(txt){
   const ok = saveCustom(CUSTOM);
   if(data && !Array.isArray(data)) gabungRingData(data.ringkasan);
   await simpanRingData();
+  if(data && !Array.isArray(data) && data.banding){ gabungBandData(data.banding); await simpanBandData(); }
   let pesanNaskah = '';
   const nas = data && !Array.isArray(data) && data.naskah && typeof data.naskah === 'object' ? data.naskah : null;
   if(nas){
@@ -2141,7 +2179,7 @@ async function importText(txt){
     try{ await idbPut(nas, meta); NASKAH_ST.meta = meta; pesanNaskah = `, isi naskah ${ids.length} aturan tersimpan`; }
     catch(e){ pesanNaskah = `, isi naskah ${ids.length} aturan dimuat tetapi browser menolak menyimpannya (hilang saat halaman ditutup)`; }
   }
-  if(data && !Array.isArray(data) && data.versi_data != null){ const s = pbState(); s.versi = data.versi_data; pbSimpan(s); renderPembaruan(); }
+  if(data && !Array.isArray(data) && data.versi_data != null){ const s = pbState(); s.versi = data.versi_data; s.fmt = FORMAT_DATA; pbSimpan(s); renderPembaruan(); }
   refreshAll(); renderNaskahInfo();
   $('#import-msg').textContent = `${baru} aturan baru, ${ganti} diperbarui, ${gabung} digabung ke aturan bawaan${pesanNaskah}` + (valid.length < arr.length ? `, ${arr.length - valid.length} baris dilewati karena tidak lengkap` : '') + (ok ? '.' : '. Browser menolak penyimpanan data aturan, jadi data hilang saat halaman ditutup.');
   toast('Impor selesai');
@@ -2190,6 +2228,7 @@ async function terapkanSelisih(p){
   saveCustom(CUSTOM);
   gabungRingData(p.ringkasan); (p.hapus_ringkasan || []).forEach(id => delete RING_DATA[id]);
   await simpanRingData();
+  if(p.banding || (p.hapus_banding || []).length){ gabungBandData(p.banding); hapusBandData(p.hapus_banding); await simpanBandData(); }
   const nas = p.naskah && typeof p.naskah === 'object' ? p.naskah : {};
   Object.keys(nas).forEach(id => { if(Array.isArray(nas[id])) nas[id] = nas[id].map(g => Array.isArray(g) ? [g[0], samarkan(String(g[1] ?? '')), ...g.slice(2)] : g); pasangNaskah(id, nas[id]); });
   (p.hapus_naskah || []).forEach(id => delete NASKAH[id]);
@@ -2201,7 +2240,10 @@ async function terapkanSelisih(p){
 async function periksaPembaruan(manual){
   const url = pbUrl(), s = pbState();
   if(!url){ if(manual) toast('Alamat pembaruan belum diatur'); return; }
-  if(!manual && (!s.otomatis || (s.dicek && Date.now() - Date.parse(s.dicek) < 20 * 3600e3))) return;
+  // Data yang dulu diambil oleh aplikasi versi lama (tanpa dukungan ringkasan AI) diambil ulang sekali secara lengkap,
+  // karena aplikasi lama mengabaikan bagian ringkasan tetapi tetap mencatat versinya sebagai sudah terpasang.
+  const ulangLengkap = s.versi != null && (+s.fmt || (s.ring ? 1 : 0)) < FORMAT_DATA;
+  if(!manual && !ulangLengkap && (!s.otomatis || (s.dicek && Date.now() - Date.parse(s.dicek) < 20 * 3600e3))) return;
   if(PB_JALAN) return;
   PB_JALAN = true;
   const tulis = t => { s.pesan = t; pbSimpan(s); renderPembaruan(); };
@@ -2211,9 +2253,9 @@ async function periksaPembaruan(manual){
     s.dicek = new Date().toISOString();
     s.aplikasi = man.aplikasi && typeof man.aplikasi === 'object' ? man.aplikasi : null; pbSimpan(s); renderApkBaru();
     const lokal = s.versi;
-    if(lokal != null && man.versi <= lokal){ tulis(`Data sudah terbaru (versi ${lokal}, ${fmtTgl(man.dibuat)}).`); if(manual) toast('Data sudah terbaru'); return; }
+    if(lokal != null && man.versi <= lokal && !ulangLengkap){ tulis(`Data sudah terbaru (versi ${lokal}, ${fmtTgl(man.dibuat)}).`); if(manual) toast('Data sudah terbaru'); return; }
     const perlu = (man.pembaruan || []).filter(x => x.versi > (lokal ?? Infinity)).sort((a, b) => a.versi - b.versi);
-    const berantai = lokal != null && perlu.length && perlu.every((x, i) => x.versi === lokal + 1 + i) && perlu[perlu.length - 1].versi === man.versi
+    const berantai = !ulangLengkap && lokal != null && perlu.length && perlu.every((x, i) => x.versi === lokal + 1 + i) && perlu[perlu.length - 1].versi === man.versi
       && perlu.reduce((n, x) => n + (x.ukuran || 0), 0) < (man.lengkap?.ukuran || Infinity) * 0.7;
     let n = 0;
     if(berantai){
@@ -2229,6 +2271,7 @@ async function periksaPembaruan(manual){
       await importText(txt);
       s.versi = man.versi; n = man.jumlah_aturan || 0;
     }
+    s.fmt = FORMAT_DATA;
     refreshAll(); renderNaskahInfo();
     tulis(`Diperbarui ke versi ${man.versi} (${fmtTgl(man.dibuat)})${berantai ? `: ${n} aturan baru atau berubah` : ''}.`);
     toast(berantai ? `Pembaruan data: ${n} aturan baru atau berubah` : 'Data aturan diperbarui');
@@ -2304,7 +2347,7 @@ function init(){
     const bs = e.target.closest('[data-bacasisa]'); if(bs){ bacaSisa(bs.dataset.bacasisa); return; }
     const cu = e.target.closest('[data-cekulang]'); if(cu){ const [k, i] = cu.dataset.cekulang.split('|'); cekUlangAspek(k, +i); return; }
     const sk = e.target.closest('[data-susun]'); if(sk){ const [ia, ib] = sk.dataset.susun.split('|'); susunKurasi(ia, ib, CUR.free.kw); return; }
-    const sv = e.target.closest('[data-simpankurasi]'); if(sv){ const x = KURASI[sv.dataset.simpankurasi]; if(x){ x.simpan = !x.simpan; saveJSON(KUR_KEY, KURASI); simpanDb('kurasi', x.kunci, x); CUR.free.kurasi = x.simpan ? x.kunci : null; renderTopicList(); renderCompare(); toast(x.simpan ? 'Disimpan di Kurasi saya' : 'Dihapus dari Kurasi saya'); } return; }
+    const sv = e.target.closest('[data-simpankurasi]'); if(sv){ const x = KURASI[sv.dataset.simpankurasi]; if(x){ x.simpan = !x.simpan; simpanKur(); simpanDb('kurasi', x.kunci, x); CUR.free.kurasi = x.simpan ? x.kunci : null; renderTopicList(); renderCompare(); toast(x.simpan ? 'Disimpan di Kurasi saya' : 'Dihapus dari Kurasi saya'); } return; }
     const ln = e.target.closest('[data-lihatnaskah]'); if(ln){ const [id, ...q] = ln.dataset.lihatnaskah.split('|'); openDetail(id, q.join('|')); return; }
   });
   $('#cmppanel').addEventListener('submit', e => {
