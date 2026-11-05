@@ -4,7 +4,8 @@
 const CACHE = 'jejak-pajak-d8322fb8b1';
 const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png'];
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(INTI)).then(() => self.skipWaiting()));
+  // cache:'reload' supaya yang disimpan benar-benar versi terbaru, bukan salinan lama di cache browser
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(INTI.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
@@ -14,7 +15,8 @@ self.addEventListener('activate', e => {
 function dariJaringan(req){
   return new Promise((ok, gagal) => {
     const t = setTimeout(() => gagal(new Error('lambat')), 4000);
-    fetch(req).then(r => { clearTimeout(t); if(!r.ok) return gagal(new Error('HTTP ' + r.status));
+    // cache:'no-cache': selalu tanya server (ETag) supaya versi baru tidak tertahan cache browser GitHub Pages (10 menit)
+    fetch(req.url, {cache: 'no-cache', credentials: 'same-origin'}).then(r => { clearTimeout(t); if(!r.ok) return gagal(new Error('HTTP ' + r.status));
       const salin = r.clone(); caches.open(CACHE).then(c => c.put('./index.html', salin)); ok(r); }, e => { clearTimeout(t); gagal(e); });
   });
 }
