@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-+7xO9mTXfiTF/HbZUSCW667FdMuIHPjMbreMkkObzLQ=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-jRxh62UQGX6U4hTOPn7UVgWGgU0ymAVdmk/sRksGTIQ=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1851,6 +1851,14 @@ ${teksB.teks || '(tidak ada bagian yang relevan)'}`;
     el.insertAdjacentHTML('beforeend', `<p class="chain">Tersimpan. Cocokkan dengan naskah resmi sebelum dikutip.</p>`);
   });
 }
+// Kata pencarian hanya dibawa sebagai topik perbandingan bila memang berupa topik (mis. "SP2DK"), bukan nomor aturan
+// (mis. "pmk 145"), dan tidak dibawa bila perbandingan siap pakai tersedia tetapi fitur AI tidak bisa dipakai.
+function topikDariCari(lama, baru){
+  const q = ($('#q').value || '').trim();
+  if(!q || nomorAturan(q)) return '';
+  if(BAND_DATA[lama + '|' + baru] && !(AI.sample && !AI.ditolak)) return '';
+  return q;
+}
 function bukaBanding(lama, baru, kw=''){
   closeDetail(); showTab('bandingkan');
   CUR.topic = BEBAS; CUR.free = {...CUR.free, a: cite(BYID[lama]), b: cite(BYID[baru]), kw, pasangan:null, kurasi:null, ringkas:true, minta:false, lipat:false};
@@ -2323,7 +2331,7 @@ function init(){
     const sm = e.target.closest('[data-semua]'); if(sm){ F.semua = true; F.batas = 100; renderSearch(); return; }
     const o = e.target.closest('[data-open]'); if(o){ e.preventDefault(); openDetail(o.dataset.open); return; }
     const cr = e.target.closest('[data-cari]'); if(cr){ closeDetail(); showTab('cari'); $('#q').value = cr.dataset.cari; renderSearch(); window.scrollTo(0,0); return; }
-    const bd = e.target.closest('[data-banding]'); if(bd){ const [l, b] = bd.dataset.banding.split('|'); bukaBanding(l, b, $('#q').value.trim()); return; }
+    const bd = e.target.closest('[data-banding]'); if(bd){ const [l, b] = bd.dataset.banding.split('|'); bukaBanding(l, b, topikDariCari(l, b)); return; }
     const rk = e.target.closest('[data-ringkas]'); if(rk && DETAIL_ID){ buatRingkasan(DETAIL_ID); return; }
     const tj = e.target.closest('[data-topicjump]');
     if(tj){ const t = TOPICS.find(x=>x.id===tj.dataset.topicjump); closeDetail(); showTab('bandingkan'); CUR.topic=t.id; const i = t.versi.findIndex(v=>v.reg===tj.dataset.reg); CUR.b = Math.max(1,i); CUR.a = CUR.b-1; renderTopicList(); renderCompare(); window.scrollTo(0,0); return; }
