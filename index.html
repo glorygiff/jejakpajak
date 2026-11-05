@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-+c9mdTXzsroCqrOTIedZc+q5UWCZmklm6CoyiOLbCBg=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-+xWksSLmB0QMULyTUmZna3APzx6WVRzvhle++IjTY3Y=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1395,11 +1395,12 @@ const sebutPenanda = m => { const j = jenisPenanda(m), x = m.replace(/[.)(]/g, '
 const labelDasar = l => bersihLabel(l).replace(/^[A-Z]\.\s+/, '').trim();
 const nomorPasal = l => { const m = String(l).match(/^Pasal\s+(\d+[A-Z]?)\b/); return m ? m[1] : null; };
 
-function pecahButir(label, teks){
-  // pecah per baris yang diawali penanda; hanya dua jenis penanda teratas yang dipakai sebagai batas
+function pecahButir(label, teks, dalam = 0, lewati = []){
+  // pecah per baris yang diawali penanda; dua jenis penanda teratas dipakai sebagai batas, butir yang masih
+  // terlalu panjang dipecah lagi dengan penanda tingkat berikutnya (paling dalam 3 kali)
   const baris = String(teks).split('\n');
   const jenisUrut = [];
-  for(const b of baris){ const m = b.match(RE_PENANDA); if(m){ const j = jenisPenanda(m[1]); if(!jenisUrut.includes(j)) jenisUrut.push(j); if(jenisUrut.length >= 2) break; } }
+  for(const b of baris){ const m = b.match(RE_PENANDA); if(m){ const j = jenisPenanda(m[1]); if(!lewati.includes(j) && !jenisUrut.includes(j)) jenisUrut.push(j); if(jenisUrut.length >= 2) break; } }
   if(!jenisUrut.length) return [{l: label, t: teks}];
   const potong = [], jalur = [];
   let cur = {jalur: [], baris: []};
@@ -1421,7 +1422,9 @@ function pecahButir(label, teks){
     const tt = p.baris.join('\n').trim();
     // hanya kalimat pengantar ("... yang dimaksud dengan:") atau potongan sangat pendek yang digabung ke butir berikutnya
     if((tt.length < 60 || (/:\s*$/.test(tt) && tt.length < 300)) && p !== potong[potong.length - 1]){ tunda = {t: tt, jalur: p.jalur}; continue; }
-    out.push({l: p.jalur.length ? `${label} ${p.jalur.filter(Boolean).map(sebutPenanda).join(' ')}` : label, t: tt});
+    const lb = p.jalur.length ? `${label} ${p.jalur.filter(Boolean).map(sebutPenanda).join(' ')}` : label;
+    if(tt.length > BATAS_SATUAN && dalam < 3){ out.push(...pecahButir(lb, tt, dalam + 1, [...lewati, ...jenisUrut])); continue; }
+    out.push({l: lb, t: tt});
   }
   if(tunda) out.push({l: tunda.jalur.length ? `${label} ${tunda.jalur.filter(Boolean).map(sebutPenanda).join(' ')}` : label, t: tunda.t});
   return out.length ? out : [{l: label, t: teks}];
@@ -1713,28 +1716,34 @@ function renderFree(){
   } else {
     const groups = parseQuery(S.kw);
     if(groups.length){
-      const ma = cocokSegmen(ia, groups), mb = cocokSegmen(ib, groups);
+      // bagian = butir ketentuan (bukan potongan 2.000 huruf), lihat satuanNaskah()
+      const ma = cocokSatuan(ia, groups), mb = cocokSatuan(ib, groups);
       if(!ma.length && !mb.length){
         isi = `<div class="empty">Kata "${esc(S.kw)}" tidak ditemukan di kedua naskah. Pencarian memakai kata persis dan sinonimnya, sedangkan ketentuan bisa memakai istilah lain (mis. "paling lama … hari" untuk jangka waktu) dan naskah hasil OCR bisa salah eja. Coba istilah lain sebelum menyimpulkan bahwa hal ini tidak diatur.</div>
           ${BAND_DATA[ia + '|' + ib] ? `<p class="chain">Perbandingan siap pakai untuk pasangan ini tersedia: kosongkan kolom topik lalu tekan Bandingkan.</p>` : ''}`;
       } else {
-        if(S.pasangan !== `${ia}|${ib}|${S.kw}`){
-          S.pasangan = `${ia}|${ib}|${S.kw}`;
-          S.pa = ma.length ? ma[0].i : -1;
-          const ga = ma.length ? ma[0].g.n : '';
-          S.pb = mb.length ? (ga ? mb.slice().sort((x,y) => kemiripan(ga, y.g.n) - kemiripan(ga, x.g.n))[0].i : mb[0].i) : -1;
+        const UA = satuanNaskah(ia), UB = satuanNaskah(ib);
+        if(S.pasangan !== `${ia}|${ib}|${S.kw}|u`){ S.pasangan = `${ia}|${ib}|${S.kw}|u`; S.pa = ma.length ? ma[0].i : -1; S.pb = -2; }
+        if(S.pa >= UA.length) S.pa = ma.length ? ma[0].i : -1;
+        // butir lama dipilih: butir baru yang menjadi padanan isinya ikut dipilih (walau tidak menyebut kata kunci)
+        let lewatPadanan = null;
+        if(S.pb === -2 || S.pb >= UB.length){
+          const h = S.pa >= 0 ? padankan(ia, ib).daftar.find(h => h.a && h.a.i === S.pa && h.b) : null;
+          if(h){ S.pb = h.b.i; lewatPadanan = h; }
+          else { const ga = S.pa >= 0 ? UA[S.pa].n : ''; S.pb = mb.length ? (ga ? mb.slice().sort((x,y) => kemiripan(ga, y.g.n) - kemiripan(ga, x.g.n))[0].i : mb[0].i) : -1; }
         }
-        // bagian lama dipilih: bagian baru yang isinya paling mirip ikut dipilih (bukan yang nomornya sama)
-        if(S.pb === -2){ const ga = S.pa >= 0 ? NASKAH[ia].segs[S.pa].n : ''; S.pb = mb.length ? (ga ? mb.slice().sort((x,y) => kemiripan(ga, y.g.n) - kemiripan(ga, x.g.n))[0].i : mb[0].i) : -1; }
-        const daftar = (m, r, sisi, pilih) => `<div class="seglist"><div class="label">${esc(cite(r))} · ${m.length} bagian menyebut "${esc(S.kw)}"</div>${m.length ? m.slice(0,40).map(x => `<button data-pick="${sisi}:${x.i}" aria-pressed="${x.i===pilih}"><b>${esc(x.g.l)}${dibahasAspek(ia, ib, S.kw, sisi, x.g.l) ? '<span class="dibahas">✓ dibahas aspek</span>' : ''}</b><span class="n">${x.h}×</span><span class="snip">${highlight(cuplikan(x.g.t, groups, 170), groups)}</span></button>`).join('') : '<div class="empty">Tidak disebut di aturan ini.</div>'}</div>`;
-        const sa = S.pa >= 0 ? NASKAH[ia].segs[S.pa] : null, sb = S.pb >= 0 ? NASKAH[ib].segs[S.pb] : null;
-        const ops = diffText(sa ? sa.t : '', sb ? sb.t : '');
+        const daftar = (m, r, sisi, pilih) => `<div class="seglist"><div class="label">${esc(cite(r))} · ${m.length} bagian menyebut "${esc(S.kw)}"</div>${m.length ? m.slice(0,60).map(x => `<button data-pick="${sisi}:${x.i}" aria-pressed="${x.i===pilih}"><b>${esc(x.g.l)}${dikutipAspek(ia, ib, S.kw, sisi, x.g) ? '<span class="dibahas">✓ dibahas aspek</span>' : ''}</b><span class="n">${x.h}×</span><span class="snip">${highlight(cuplikan(x.g.t, groups, 170), groups)}</span></button>`).join('') + (m.length > 60 ? `<p class="chain">… dan ${m.length - 60} bagian lain.</p>` : '') : '<div class="empty">Tidak disebut di aturan ini.</div>'}</div>`;
+        const sa = S.pa >= 0 ? UA[S.pa] : null, sb = S.pb >= 0 ? UB[S.pb] : null;
+        const sbSebut = sb && mb.some(x => x.i === sb.i);
+        const ops = diffText(sa ? sa.t : '', sb ? sb.t : '', {ci: true});
         const st = diffStats(ops);
         isi = blokKurasi(ia, ib, S.kw, `${ma.length} bagian ${cite(ra)} dan ${mb.length} bagian ${cite(rb)} menyebut "${S.kw}"`)
           + `<details class="lipat" data-lipat="seg" ${S.lipat || !adaAspekKurasi(ia, ib, S.kw) ? 'open' : ''}><summary>Semua bagian yang menyebut "${esc(S.kw)}" <span class="n">${ma.length} · ${mb.length}</span></summary>
-          <p class="lead">Ketuk satu bagian di tiap kolom untuk dibandingkan kata per kata.</p>
+          <p class="lead">Bagian panjang dipecah per butir ketentuan. Ketuk satu butir di kolom kiri: padanan isinya di aturan baru ikut dipilih. Butir di kolom kanan bisa dipilih sendiri.</p>
           <div class="sides">${daftar(ma, ra, 'a', S.pa)}${daftar(mb, rb, 'b', S.pb)}</div>
           <div class="resultmeta"><h3>${esc(sa ? sa.l : '—')} ↔ ${esc(sb ? sb.l : '—')}</h3><div class="diffstat"><span class="a">+${st.a} kata</span><span class="d">−${st.d} kata</span></div>${segMode()}</div>
+          ${sa && sb && !sbSebut ? `<p class="chain" style="margin:0">${esc(sb.l)} dipilih karena isinya paling mirip dengan ${esc(sa.l)}, walaupun tidak menyebut “${esc(S.kw)}”.</p>` : ''}
+          ${sa && !sb ? `<p class="chain" style="margin:0">Tidak ditemukan padanan isi ${esc(sa.l)} di ${esc(cite(rb))}. Pilih butir di kolom kanan untuk membandingkan secara manual.</p>` : ''}
           ${dualDiff(ops, `<span class="cite" style="font-size:13.5px">${esc(cite(ra))}</span><span class="label">Lama · ${esc(sa ? sa.l : 'tidak ada')}</span>`, `<span class="cite" style="font-size:13.5px">${esc(cite(rb))}</span><span class="label">Baru · ${esc(sb ? sb.l : 'tidak ada')}</span>`)}
           </details>`;
       }
@@ -1927,22 +1936,29 @@ function kartuAspek(a, x, i){
 // bagian naskah yang dikutip aspek perbandingan (untuk tanda "dibahas" dan ringkasan cakupan kata kunci)
 function adaAspekKurasi(ia, ib, kw){ const x = KURASI[kunciKurasi(ia, ib, kw)]; return !!(x && Array.isArray(x.aspek) && x.aspek.length); }
 const ratakanBagian = l => norm(bersihLabel(String(l || '').replace(/[\[\]]/g, '').trim())).replace(/^[a-z]\.\s+/, '').replace(/\s+/g, ' ').trim();
-function dibahasAspek(ia, ib, kw, sisi, label){
+function cocokSatuan(id, groups){
+  const out = [];
+  satuanNaskah(id).forEach(g => {
+    let gm = 0, h = 0;
+    for(const grp of groups){ let ada = false; for(const a of grp){ const c = hitung(g.n, a, 80); if(c){ ada = true; h += c; } } if(ada) gm++; }
+    if(gm) out.push({i: g.i, g, gm, h});
+  });
+  return out.sort((a,b) => (b.gm - a.gm) || (b.h - a.h) || (a.i - b.i));
+}
+// butir dianggap "dibahas" bila kutipan salah satu aspek benar-benar ada di teks butir itu
+const rataKutip = t => norm(t).replace(/[^a-z0-9]+/g, ' ').trim();
+function dikutipAspek(ia, ib, kw, sisi, u){
   const x = KURASI[kunciKurasi(ia, ib, kw)]; if(!x || !Array.isArray(x.aspek)) return false;
-  const l = ratakanBagian(label), lp = norm(String(label)).replace(/\s+/g, ' ').trim(); if(!l) return false;
-  return x.aspek.some(a => { const s = a[sisi === 'a' ? 'lama' : 'baru']; if(!s || !s.bagian) return false;
-    const b = norm(String(s.bagian).replace(/[\[\]]/g, '')).replace(/\s+/g, ' ').trim();
-    if(b === lp) return true;   // label sama persis, termasuk potongan "(3/72)"
-    if(/\(\d+\/\d+\)/.test(String(s.bagian))) return false;   // kutipan menunjuk potongan tertentu: hanya potongan itu
-    const bb = ratakanBagian(s.bagian);
-    return bb === l || (bb.startsWith(l) && !/[0-9a-z]/.test(bb.charAt(l.length)) && !/\(\d+\/\d+\)/.test(String(s.bagian))); });
+  const teks = u._rk || (u._rk = rataKutip(u.t));
+  return x.aspek.some(a => { const s = a[sisi === 'a' ? 'lama' : 'baru']; if(!s || !s.kutipan) return false;
+    return String(s.kutipan).split(/\s*\[?\s*(?:…|\.\.\.)\s*\]?\s*/).map(rataKutip).filter(k => k.length >= 25).some(k => teks.includes(k.slice(0, 120))); });
 }
 function blokCakupan(ia, ib, kw, x){
   if(!norm(kw || '').trim() || !x || !Array.isArray(x.aspek) || !x.aspek.length) return '';
   const groups = parseQuery(kw); if(!groups.length) return '';
-  const ma = cocokSegmen(ia, groups), mb = cocokSegmen(ib, groups);
+  const ma = cocokSatuan(ia, groups), mb = cocokSatuan(ib, groups);
   const tot = ma.length + mb.length; if(!tot) return '';
-  const kena = ma.filter(m => dibahasAspek(ia, ib, kw, 'a', m.g.l)).length + mb.filter(m => dibahasAspek(ia, ib, kw, 'b', m.g.l)).length;
+  const kena = ma.filter(m => dikutipAspek(ia, ib, kw, 'a', m.g)).length + mb.filter(m => dikutipAspek(ia, ib, kw, 'b', m.g)).length;
   const sisa = tot - kena;
   return `<div class="cakupan">Kata “${esc(kw)}” disebut di <b>${ma.length} bagian ${esc(cite(BYID[ia]))}</b> dan <b>${mb.length} bagian ${esc(cite(BYID[ib]))}</b>${kena ? `; ${kena} di antaranya dikutip aspek di bawah` : ''}.${sisa ? ` <button class="linkish" data-lihatbagian>Lihat ${sisa} bagian yang belum dibahas</button>` : ' Semua sudah dikutip aspek di bawah.'}</div>`;
 }
