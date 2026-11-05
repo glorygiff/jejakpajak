@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-+xWksSLmB0QMULyTUmZna3APzx6WVRzvhle++IjTY3Y=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-lYoKRD5dYCD2N/7yhpazWom8A1TQtfykYqv3XYTBOsc=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -295,6 +295,15 @@ details.lipat[open]{padding-bottom:14px} details.lipat[open]>summary{border-bott
 .cakupan{margin:8px 0 4px;padding:9px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:13.5px;line-height:1.55}
 .cakupan .linkish{font-weight:600}
 .seglist .dibahas{font-size:11.5px;color:var(--ok);font-weight:600;margin-left:6px}
+.otomatis{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface);display:grid;gap:12px;margin:12px 0}
+.otomatis .resultmeta{margin:0} .otomatis h3{margin:0}
+.ot-bag{display:grid;gap:6px}
+.ot-angka{list-style:none;padding:0;margin:0;display:grid;gap:6px;font-size:13.5px}
+.ot-angka li{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.ot-angka .ot-nilai{font-family:var(--f-mono);font-size:13px} .ot-angka .d{color:var(--bad)} .ot-angka .a{color:var(--ok)}
+.ot-det{display:inline-block;margin:0 6px 6px 0;vertical-align:top} .ot-det>summary{cursor:pointer;list-style:none} .ot-det>summary::-webkit-details-marker{display:none}
+.ot-det[open]{display:block} .ot-det .ot-isi{display:grid;gap:4px;margin:8px 0 4px;padding-left:10px;border-left:2px solid var(--line);font-size:13.5px;max-height:260px;overflow:auto}
+.ot-sk{color:var(--muted)} .otomatis .linkish{text-align:left}
 .pairlist button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .panel-sub{border:1px dashed var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;min-width:0}
 ul.pts.small{font-size:13px;color:var(--muted)}
@@ -1583,6 +1592,129 @@ function diffBertingkat(x, y, o={}){
   return ops;
 }
 /* === PADANAN SELESAI === */
+/* === RINGKASAN OTOMATIS MULAI ===
+   Ringkasan perubahan tanpa AI, dari pola teks yang bisa dikenali dengan pasti:
+   1) istilah definisi ("X adalah ...", "X yang selanjutnya disingkat Y adalah ...");
+   2) angka penting di bagian yang berpasangan: jangka waktu, persentase, dan nilai rupiah. */
+const RINGKAS_CACHE = new Map();
+const BUKAN_ISTILAH = /^(dalam|yang|pada|hal|apabila|jika|bagi|untuk|dengan|atas|terhadap|sebagaimana|selain|setiap|ketentuan|berdasarkan|sesuai|contoh|misalnya|termasuk|dihapus)\b/i;
+const ISTILAH_KALIMAT = /\s(yang|sebagaimana|dimaksud|disusun|dilakukan|diberikan|wajib|dapat|harus|tidak|merupakan|apabila)\s/i;
+const RE_DEFINISI = /^([A-Z][\w\/'’().\- ]{1,110}?)(?:,?\s+yang\s+selanjutnya\s+(?:disebut|disingkat|dalam[\w ]+disebut)\s+([\w\/'’.\- ]{1,50}?))?,?\s+(?:adalah|ialah)\s+(\S[\s\S]*)$/;
+function definisiDari(u){
+  if(u._def !== undefined) return u._def;
+  // buang kalimat pengantar ("Dalam Surat Edaran ini yang dimaksud dengan:") dan penanda butir di depan
+  const baris = u.t.split('\n'); while(baris.length > 1 && /:\s*$/.test(baris[0].trim())) baris.shift();
+  let t = baris.join(' ').replace(/\s+/g, ' ').trim();
+  // penanda butir dan sisa "Dihapus." dari aturan perubahan ("Dihapus. 12. Tahun Pajak adalah ...")
+  for(let k = 0; k < 8; k++){ const m = t.match(RE_PENANDA) || t.match(/^dihapus\.?\s*/i); if(!m) break; t = t.slice(m[0].length).trim(); }
+  const m = t.match(RE_DEFINISI);
+  let d = null;
+  if(m && !BUKAN_ISTILAH.test(m[1]) && !ISTILAH_KALIMAT.test(' ' + m[1] + ' ') && m[1].trim().split(/\s+/).length <= 10){
+    const istilah = m[1].trim().replace(/[,.]$/, ''), singkat = (m[2] || '').trim().replace(/[,.]$/, '');
+    d = {istilah, singkat, isi: m[3].trim(), kunci: norm(istilah).replace(/[^a-z0-9]+/g, ''), kunciIsi: norm(m[3]).replace(/[^a-z0-9]+/g, '')};
+  }
+  return (u._def = d);
+}
+const KATA_BILANGAN = '(?:\\s*\\((?:[a-z]+\\s?){1,6}\\))?';
+const RE_ANGKA = new RegExp(
+  `(\\d+(?:[.,]\\d+)?)${KATA_BILANGAN}\\s*(hari\\s+kerja|hari\\s+kalender|hari|minggu|bulan|tahun|jam|%|persen)` +
+  `|rp\\.?\\s?(\\d{1,3}(?:\\.\\s?\\d{3})+(?:,\\d+)?|\\d+(?:,\\d+)?)${KATA_BILANGAN}\\s*(ribu|juta|miliar|milyar|triliun)?`, 'gi');
+function angkaDari(t){
+  const out = [], s = String(t), low = s.toLowerCase();
+  RE_ANGKA.lastIndex = 0; let m;
+  while((m = RE_ANGKA.exec(low))){
+    const sebelum = low.slice(Math.max(0, m.index - 14), m.index), sesudah = low.slice(m.index + m[0].length, m.index + m[0].length + 6);
+    if(m[2]){
+      if(/(nomor|no\.?|pasal|ayat|angka|huruf)\s*$/.test(sebelum)) continue;          // "Nomor 6 Tahun 1983"
+      if(/^tahun$/.test(m[2]) && /^\s*\d{4}/.test(sesudah)) continue;                 // "... Tahun 2020"
+      const sat = m[2].replace(/\s+/g, ' ').replace('persen', '%');
+      out.push(sat === '%' ? `${m[1]}%` : `${m[1]} ${sat}`);
+    } else if(m[3]){
+      // nilai rupiah ditulis seragam (Rp4.800.000.000,00 = Rp4,8 miliar) supaya beda penulisan tidak dianggap perubahan
+      let v = parseFloat(m[3].replace(/\./g, '').replace(',', '.'));
+      const kali = {ribu: 1e3, juta: 1e6, miliar: 1e9, milyar: 1e9, triliun: 1e12}[m[4]] || 1; v *= kali;
+      if(!(v >= 1000)) continue;   // potongan OCR seperti "Rp4" dilewati
+      out.push(teksRupiah(v));
+    }
+  }
+  return out;
+}
+function teksRupiah(v){
+  const f = (x, s) => `Rp${(Math.round(x * 1000) / 1000).toLocaleString('id-ID')} ${s}`;
+  return v >= 1e12 ? f(v / 1e12, 'triliun') : v >= 1e9 ? f(v / 1e9, 'miliar') : v >= 1e6 ? f(v / 1e6, 'juta') : `Rp${v.toLocaleString('id-ID')}`;
+}
+function bedaDaftar(a, b){
+  const sisa = b.slice(), hilang = [];
+  for(const x of a){ const i = sisa.indexOf(x); if(i >= 0) sisa.splice(i, 1); else hilang.push(x); }
+  return {hilang, tambah: sisa};
+}
+function ringkasOtomatis(ia, ib){
+  const kunci = ia + '|' + ib;
+  if(RINGKAS_CACHE.has(kunci)) return RINGKAS_CACHE.get(kunci);
+  const r = padankan(ia, ib), D = r.daftar;
+  const posA = new Map(), posB = new Map();
+  D.forEach((h, i) => { if(h.a && !posA.has(h.a)) posA.set(h.a, i); if(h.b && !posB.has(h.b)) posB.set(h.b, i); });
+  // 1) istilah definisi
+  const defA = new Map(), defB = new Map();
+  for(const u of satuanNaskah(ia)){ const d = definisiDari(u); if(d && !defA.has(d.kunci)) defA.set(d.kunci, {d, u}); }
+  for(const u of satuanNaskah(ib)){ const d = definisiDari(u); if(d && !defB.has(d.kunci)) defB.set(d.kunci, {d, u}); }
+  const istilah = {baru: [], hilang: [], ubah: [], ganti: [], sama: []}, dipakaiA = new Set();
+  for(const [k, b] of defB){
+    const a = defA.get(k);
+    if(a){
+      dipakaiA.add(k);
+      const x = {istilah: b.d.istilah, singkatLama: a.d.singkat, singkat: b.d.singkat, a: a.u, b: b.u, idx: posB.get(b.u) ?? posA.get(a.u)};
+      (a.d.kunciIsi === b.d.kunciIsi && a.d.singkat === b.d.singkat ? istilah.sama : istilah.ubah).push(x);
+      continue;
+    }
+    // istilah baru yang isinya berpasangan dengan definisi lama berisitilah lain: istilah diganti (mis. P2DK -> SP2DK)
+    const h = D[posB.get(b.u)], dl = h && h.a ? definisiDari(h.a) : null;
+    if(dl && !defB.has(dl.kunci) && h.st === 'berubah' && !h.gabung && kemiripan(norm(dl.isi), norm(b.d.isi)) >= 0.5){ dipakaiA.add(dl.kunci); istilah.ganti.push({dari: dl.istilah, ke: b.d.istilah, a: h.a, b: b.u, idx: posB.get(b.u)}); }
+    else istilah.baru.push({istilah: b.d.istilah, singkat: b.d.singkat, b: b.u, idx: posB.get(b.u)});
+  }
+  // aturan perubahan hanya memuat yang diubah: definisi lama yang tidak disebut tetap berlaku, jadi tidak dilaporkan hilang
+  if(r.cara !== 'ubah') for(const [k, a] of defA) if(!dipakaiA.has(k) && !defB.has(k)) istilah.hilang.push({istilah: a.d.istilah, singkat: a.d.singkat, a: a.u, idx: posA.get(a.u)});
+  // 2) angka penting di bagian yang berpasangan
+  const angka = [];
+  D.forEach((h, i) => {
+    if(!h.a || !h.b || h.st !== 'berubah' || h.gabung) return;   // hanya pasangan yang pasti
+    const x = bedaDaftar(angkaDari(h.a.t), angkaDari(h.b.t));
+    const unik = l => [...new Set(l)];
+    if(x.hilang.length || x.tambah.length) angka.push({idx: i, h, lama: unik(x.hilang), baru: unik(x.tambah)});
+  });
+  const hasil = {istilah, angka, cara: r.cara};
+  RINGKAS_CACHE.set(kunci, hasil);
+  return hasil;
+}
+/* === RINGKASAN OTOMATIS SELESAI === */
+function blokOtomatis(ia, ib, kw){
+  const R = ringkasOtomatis(ia, ib), I = R.istilah;
+  const groups = norm(kw || '').trim() ? parseQuery(kw) : [];
+  const kena = u => !groups.length || (!!u && groups.every(grp => grp.some(a => matchAlt(u.n, a))));
+  const ganti = I.ganti.filter(x => kena(x.a) || kena(x.b)), ubah = I.ubah.filter(x => kena(x.a) || kena(x.b));
+  const baru = I.baru.filter(x => kena(x.b)), hilang = I.hilang.filter(x => kena(x.a)), sama = I.sama.filter(x => kena(x.a) || kena(x.b));
+  const angka = R.angka.filter(x => kena(x.h.a) || kena(x.h.b));
+  if(!angka.length && !ganti.length && !ubah.length && !baru.length && !hilang.length) return '';
+  const D = padankan(ia, ib).daftar;
+  const tautan = (idx, teks) => { const h = D[idx]; return h ? `<button class="linkish" data-padbuka="${idx}|${h.a ? h.a.i : -1}|${h.b ? h.b.i : -1}|${h.st}">${teks}</button>` : teks; };
+  const istilahTeks = (t, sk) => esc(t) + (sk ? ` <span class="ot-sk">(${esc(sk)})</span>` : '');
+  const BATAS = 40;
+  const daftarIstilah = (judul, kelas, arr, isi) => arr.length ? `<details class="ot-det"><summary><span class="stat ${kelas}">${arr.length} ${judul}</span></summary><div class="ot-isi">${arr.slice(0, 200).map(isi).join('')}${arr.length > 200 ? `<span class="chain">… dan ${arr.length - 200} lainnya</span>` : ''}</div></details>` : '';
+  return `<div class="otomatis">
+    <div class="resultmeta"><h3>Ringkasan otomatis${groups.length ? ` tentang “${esc(kw)}”` : ''}</h3><span class="chain">dibaca dari pola teks, tanpa AI · ketuk untuk melihat naskahnya</span></div>
+    ${angka.length ? `<div class="ot-bag"><div class="label">Angka &amp; jangka waktu yang berubah · ${angka.length}</div>
+      <ul class="ot-angka">${angka.slice(0, BATAS).map(x => `<li>${tautan(x.idx, x.h.a.l === x.h.b.l ? esc(x.h.b.l) : `${esc(x.h.a.l)} → ${esc(x.h.b.l)}`)}<span class="ot-nilai"><span class="d">${esc(x.lama.join(', ') || '—')}</span> → <span class="a">${esc(x.baru.join(', ') || '—')}</span></span></li>`).join('')}</ul>
+      ${angka.length > BATAS ? `<p class="chain" style="margin:0">… dan ${angka.length - BATAS} bagian lain. Isi kata kunci untuk mempersempit.</p>` : ''}</div>` : ''}
+    ${ganti.length + ubah.length + baru.length + hilang.length ? `<div class="ot-bag"><div class="label">Istilah dalam definisi</div>
+      ${daftarIstilah('diganti namanya', 'berubah', ganti, x => `<div>${tautan(x.idx, `${esc(x.dari)} → ${esc(x.ke)}`)}</div>`)}
+      ${daftarIstilah('diubah pengertiannya', 'berubah', ubah, x => `<div>${tautan(x.idx, istilahTeks(x.istilah, x.singkat))}</div>`)}
+      ${daftarIstilah('baru', 'baru', baru, x => `<div>${tautan(x.idx, istilahTeks(x.istilah, x.singkat))}</div>`)}
+      ${daftarIstilah('tidak ada lagi', 'dihapus', hilang, x => `<div>${tautan(x.idx, istilahTeks(x.istilah, x.singkat))}</div>`)}
+      ${sama.length ? `<span class="stat tetap">${sama.length} sama</span>` : ''}
+      ${R.cara === 'ubah' ? `<p class="chain" style="margin:0">Aturan perubahan hanya memuat definisi yang diubah; definisi lain di ${esc(cite(BYID[ia]))} tetap berlaku.</p>` : ''}</div>` : ''}
+    <p class="chain" style="margin:0">Dikenali otomatis dari tulisan "… adalah …", jangka waktu (hari/bulan/tahun), persentase, dan rupiah di bagian yang berpasangan. Bisa terlewat atau salah baca bila naskahnya hasil OCR; cocokkan dengan naskah sebelum dikutip.</p>
+  </div>`;
+}
 
 function pasangPerPasal(ia, ib){
   const A = NASKAH[ia].segs, B = NASKAH[ib].segs;
@@ -1738,6 +1870,7 @@ function renderFree(){
         const ops = diffText(sa ? sa.t : '', sb ? sb.t : '', {ci: true});
         const st = diffStats(ops);
         isi = blokKurasi(ia, ib, S.kw, `${ma.length} bagian ${cite(ra)} dan ${mb.length} bagian ${cite(rb)} menyebut "${S.kw}"`)
+          + blokOtomatis(ia, ib, S.kw)
           + `<details class="lipat" data-lipat="seg" ${S.lipat || !adaAspekKurasi(ia, ib, S.kw) ? 'open' : ''}><summary>Semua bagian yang menyebut "${esc(S.kw)}" <span class="n">${ma.length} · ${mb.length}</span></summary>
           <p class="lead">Bagian panjang dipecah per butir ketentuan. Ketuk satu butir di kolom kiri: padanan isinya di aturan baru ikut dipilih. Butir di kolom kanan bisa dipilih sendiri.</p>
           <div class="sides">${daftar(ma, ra, 'a', S.pa)}${daftar(mb, rb, 'b', S.pb)}</div>
@@ -1749,6 +1882,7 @@ function renderFree(){
       }
     } else {
       isi = blokKurasi(ia, ib, '', `${NASKAH[ia].segs.length} bagian ${cite(ra)} dan ${NASKAH[ib].segs.length} bagian ${cite(rb)}`)
+        + blokOtomatis(ia, ib, '')
         + blokPadanan(ia, ib, S);
     }
   }
@@ -2655,6 +2789,16 @@ function init(){
     const lb = e.target.closest('[data-lihatbagian]'); if(lb){ CUR.free.lipat = true; renderCompare(); const d = document.querySelector('[data-lipat="seg"]'); if(d) d.scrollIntoView({block:'start', behavior:'smooth'}); return; }
     const pr = e.target.closest('[data-pair]'); if(pr){ CUR.free.pa = +pr.dataset.pair; renderCompare(); return; }
     const pd = e.target.closest('[data-pad]'); if(pd){ CUR.free.pa = +pd.dataset.pad; renderCompare(); const d = document.querySelector('[data-lipat="pasal"] .resultmeta'); if(d && window.matchMedia('(max-width: 700px)').matches) d.scrollIntoView({block:'start', behavior:'smooth'}); return; }
+    const pbk = e.target.closest('[data-padbuka]'); if(pbk){
+      const [i, ai, bi, st] = pbk.dataset.padbuka.split('|').map((x, k) => k < 3 ? Number(x) : x);
+      const adaKw = !!norm(CUR.free.kw || '').trim();
+      if(adaKw){ CUR.free.pa = ai; CUR.free.pb = bi; }
+      else { CUR.free.padf = Object.keys(SARING_PADANAN).find(k => SARING_PADANAN[k].st && SARING_PADANAN[k].st.includes(st)) || 'semua'; CUR.free.pa = i; }
+      CUR.free.lipat = true; renderCompare();
+      // butir yang dipilih digulir ke dalam pandangan di daftarnya
+      document.querySelectorAll('.padlist [aria-pressed="true"], .seglist [aria-pressed="true"]').forEach(b => { const l = b.parentElement; if(l) l.scrollTop = Math.max(0, b.offsetTop - l.offsetTop - 8); });
+      const d = document.querySelector(adaKw ? '[data-lipat="seg"] .resultmeta' : '[data-lipat="pasal"] .resultmeta'); if(d) d.scrollIntoView({block:'start', behavior:'smooth'});
+      return; }
     const pf = e.target.closest('[data-padf]'); if(pf){ CUR.free.padf = pf.dataset.padf; renderCompare(); return; }
     const j = e.target.closest('[data-jelaskan]'); if(j){ jelaskanBanding(); return; }
     const uf = e.target.closest('[data-ubahform]'); if(uf){ CUR.free.ringkas = false; renderCompare(); setTimeout(() => $('#fk') && $('#fk').focus(), 50); return; }
