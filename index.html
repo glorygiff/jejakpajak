@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-lYoKRD5dYCD2N/7yhpazWom8A1TQtfykYqv3XYTBOsc=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-svhNzsyWxh0tnV10xd/1gcEmk5gGShOtgH44hCJLJZ0=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -249,7 +249,7 @@ details.asp>summary::after{content:'▸';color:var(--muted);margin-left:2px} det
 .asp .qt{font-size:14px;line-height:1.6}
 .asp .nihil{color:var(--muted);font-style:italic}
 .cekq{margin-top:10px;font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
-.cekq.ok{color:var(--ok)} .cekq.warn{color:var(--warn)} .cekq .lihat{display:flex;gap:12px;margin-left:auto;flex-wrap:wrap}
+.cekq.ok{color:var(--ok)} .cekq.warn{color:var(--bad);font-weight:600} .cekq.sebagian{color:var(--warn)} .cekq .lihat{display:flex;gap:12px;margin-left:auto;flex-wrap:wrap}
 .load{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:14px;display:grid;gap:10px}
 details.lipat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 14px}
 details.lipat>summary{cursor:pointer;padding:12px 0;font-weight:600;display:flex;gap:8px;align-items:center}
@@ -2020,13 +2020,26 @@ function cekSilang(rec, x){
 function kunciKurasi(ia, ib, kw){ return 'k' + kunciBanding(ia, ib, kw); }
 function daftarKurasiSaya(){ return Object.values(KURASI).filter(x => x && x.simpan && BYID[x.a] && BYID[x.b] && Array.isArray(x.aspek)).sort((a, b) => String(b.dibuat).localeCompare(String(a.dibuat))); }
 const ratakan = s => norm(s).replace(/[“”"'‘’`]/g, '').replace(/\s+/g, ' ').trim();
+/* Cek kutipan bertingkat: persis; hampir persis (≥ 90% rangkaian 4 kata ada di naskah: beda ejaan, tanda baca,
+   typo OCR); sebagian (60-90%: dipendekkan atau sebagian diparafrase); tidak ditemukan (< 60%). */
+const kataKutip = t => norm(t).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+const rangkai4 = w => { const r = []; for(let k = 0; k + 3 < w.length; k++) r.push(w[k] + ' ' + w[k + 1] + ' ' + w[k + 2] + ' ' + w[k + 3]); return r; };
 function cekKutipan(id, kutipan){
-  const N = NASKAH[id]; if(!N || !kutipan) return {ok:false, label:null};
+  const N = NASKAH[id]; if(!N || !kutipan) return {ok:false, label:null, tingkat:'tidak', rasio:0};
   const potong = String(kutipan).split(/\s*\[?\s*(?:…|\.\.\.)\s*\]?\s*/).map(ratakan).filter(x => x.length >= 12);
-  if(!potong.length) return {ok:false, label:null};
+  if(!potong.length) return {ok:false, label:null, tingkat:'tidak', rasio:0};
   let label = null;
   const ok = potong.every(b => { const g = N.segs.find(g => (g.r ||= ratakan(g.t)).includes(b)); if(g && !label) label = g.l; return !!g; });
-  return {ok, label};
+  if(ok) return {ok, label, tingkat:'persis', rasio:1};
+  const r4 = rangkai4(kataKutip(potong.join(' … ')));
+  if(r4.length < 2) return {ok:false, label, tingkat:'tidak', rasio:0};
+  // bagian naskah yang paling banyak memuat rangkaian kata kutipan
+  let best = null, nBest = 0;
+  for(const g of N.segs){ const set = g.r4 || (g.r4 = new Set(rangkai4(kataKutip(g.t)))); let n = 0; for(const x of r4) if(set.has(x)) n++; if(n > nBest){ nBest = n; best = g; } }
+  let n = 0; const semua = N.r4 || (N.r4 = new Set(N.segs.flatMap(g => [...(g.r4 || (g.r4 = new Set(rangkai4(kataKutip(g.t)))))])));
+  for(const x of r4) if(semua.has(x)) n++;
+  const rasio = n / r4.length;
+  return {ok:false, label: label || (best && nBest ? best.l : null), rasio, tingkat: rasio >= 0.9 ? 'hampir' : rasio >= 0.6 ? 'sebagian' : 'tidak'};
 }
 function ambilJSON(t){
   const s = String(t || '').replace(/```(?:json)?/gi, '');
@@ -2051,7 +2064,12 @@ function kartuAspek(a, x, i){
   else { kiri = x.lama ? `<del>${esc(x.lama.kutipan)}</del>` : '<span class="nihil">Tidak diatur di aturan lama.</span>'; kanan = x.baru ? `<ins>${esc(x.baru.kutipan)}</ins>` : '<span class="nihil">Tidak diatur lagi di aturan baru.</span>'; }
   const kepala = (id, sisi, c) => `<div class="qh"><b class="cite">${esc(cite(BYID[id]))}</b><span>${esc((c && c.label) || (sisi && sisi.bagian) || '')}</span></div>`;
   const cek = [ca, cb].filter(Boolean);
-  const semuaOk = cek.every(c => c.ok);
+  const URUT_CEK = {persis:0, hampir:1, sebagian:2, tidak:3};
+  const terburuk = cek.reduce((m, c) => URUT_CEK[c.tingkat] > URUT_CEK[m] ? c.tingkat : m, 'persis');
+  const PESAN_CEK = {persis:['ok', '✓ Kutipan ditemukan persis di naskah'],
+    hampir:['ok', '✓ Kutipan cocok dengan naskah (hanya beda ejaan, tanda baca, atau salah ketik)'],
+    sebagian:['sebagian', '◐ Kutipan dipendekkan atau sebagian diparafrase; baca bunyi lengkapnya di naskah sebelum dikutip'],
+    tidak:['warn', '⚠ Kutipan tidak ditemukan di naskah; jangan dipakai sebelum dicocokkan']};
   const silang = x.dicekUlang ? [] : cekSilang(a, x);
   const lawan = x.status === 'dihapus' ? a.b : a.a;
   const blokSilang = silang.length ? `<div class="silang"><b>⚠ Periksa: klaim “${STATUS_ASPEK[x.status]}” mungkin keliru.</b> ${esc(cite(BYID[lawan]))} masih memuat bagian yang mirip:
@@ -2062,7 +2080,7 @@ function kartuAspek(a, x, i){
     ${x.catatan ? `<p class="cat">${esc(x.catatan)}</p>` : ''}
     <div class="q">${kepala(a.a, x.lama, ca)}<div class="qt">${kiri}</div></div>
     <div class="q">${kepala(a.b, x.baru, cb)}<div class="qt">${kanan}</div></div>
-    <div class="cekq ${semuaOk ? 'ok' : 'warn'}">${semuaOk ? '✓ Kutipan ditemukan persis di naskah' : '⚠ Sebagian kutipan tidak ditemukan persis di naskah; cocokkan sebelum dipakai'}<span class="lihat">${cari(a.a, x.lama)}${cari(a.b, x.baru)}</span></div>
+    <div class="cekq ${PESAN_CEK[terburuk][0]}">${PESAN_CEK[terburuk][1]}<span class="lihat">${cari(a.a, x.lama)}${cari(a.b, x.baru)}</span></div>
     ${x.dicekUlang ? `<p class="chain" style="margin:6px 0 0">Sudah dicek ulang ${esc(x.dicekUlang)} dengan bagian pembanding dari naskah.</p>` : ''}
     ${blokSilang}
   </details>`;
