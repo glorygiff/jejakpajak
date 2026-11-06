@@ -1,8 +1,8 @@
 /* Service worker Jejak Pajak (versi web/PWA). Kerangka aplikasi disimpan supaya bisa dibuka tanpa internet.
    index.html diambil dari jaringan lebih dulu (maks. 4 detik) supaya perbaikan aplikasi langsung sampai;
    data aturan diambil aplikasi sendiri dari GitHub dan disimpan di IndexedDB, tidak lewat sini. */
-const CACHE = 'jejak-pajak-0f9b1abe9a';
-const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png'];
+const CACHE = 'jejak-pajak-8fc95bd5f2';
+const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png', './plex-cond-500.woff2', './plex-cond-600.woff2', './plex-cond-700.woff2', './plex-mono-400.woff2', './plex-mono-500.woff2', './plex-mono-600.woff2', './plex-sans-400.woff2', './plex-sans-400i.woff2', './plex-sans-500.woff2', './plex-sans-600.woff2'];
 self.addEventListener('install', e => {
   // cache:'reload' supaya yang disimpan benar-benar versi terbaru, bukan salinan lama di cache browser
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(INTI.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting()));
