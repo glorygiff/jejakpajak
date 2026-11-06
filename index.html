@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-Rwxy0Zu22Z+zhS12FaEjbG9e+r8juPVh5DZvs+L6iwc=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-31s/nJPRfI7XakpaMZ8QR6PICJjWoEIq+Nrc+moBvE8=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -461,8 +461,12 @@ header.top h1 span{color:var(--accent)}
         <div class="full filters"><button class="btn" type="submit">Simpan aturan</button><span id="a-err" class="chain" role="status"></span></div>
       </form>
       <div class="panel">
-        <div class="resultmeta"><h3>Aturan tambahan Anda</h3><span id="custcount"></span><button class="btn danger small" id="clearall" type="button" hidden>Hapus semua data tambahan</button></div>
-        <div class="register" id="custlist"></div>
+        <div class="resultmeta"><h3>Aturan tambahan</h3><span id="custcount"></span><button class="btn small ghost" id="cust-toggle" type="button" aria-expanded="false" aria-controls="cust-isi">Tampilkan daftar</button></div>
+        <p class="chain" id="cust-ket" style="margin:0">Aturan dari pembaruan data dan yang Anda tambahkan sendiri. Semuanya tetap ikut dicari dan tampil di garis waktu walaupun daftarnya disembunyikan.</p>
+        <div id="cust-isi" hidden>
+          <div class="register" id="custlist"></div>
+          <div class="filters"><button class="btn danger small" id="clearall" type="button" hidden>Hapus semua data tambahan</button></div>
+        </div>
         <details>
           <summary class="label" style="cursor:pointer">Cadangan dan pemulihan (JSON)</summary>
           <div style="display:grid;gap:10px;margin-top:10px">
@@ -2488,11 +2492,18 @@ function runTextDiff(){
 }
 
 /* ===== Koleksi ===== */
+// Daftar aturan tambahan disembunyikan bawaan (bisa ribuan baris dari pembaruan data); pilihan tampil diingat per perangkat.
+const CUST_TAMPIL_KEY = 'jejak-aturan-pajak:tampil-tambahan:v1';
 function renderCustom(){
   const own = CUSTOM.filter(c => !REGS.some(r => r.id === c.id));
   const merged = CUSTOM.length - own.length;
   $('#custcount').textContent = `${own.length} aturan` + (merged ? ` · ${merged} aturan bawaan diperkaya` : '');
+  const buka = !!loadJSON(CUST_TAMPIL_KEY, false);
+  const tg = $('#cust-toggle');
+  if(tg){ tg.textContent = buka ? 'Sembunyikan daftar' : 'Tampilkan daftar'; tg.setAttribute('aria-expanded', String(buka)); tg.hidden = !CUSTOM.length; }
+  $('#cust-isi').hidden = !buka && CUSTOM.length > 0;
   $('#clearall').hidden = !CUSTOM.length;
+  if($('#cust-isi').hidden){ $('#custlist').innerHTML = ''; return; }   // tersembunyi: tidak perlu menyusun ribuan baris
   const tampil = own.slice(0, 60);
   $('#custlist').innerHTML = own.length ? tampil.map(c => rowHTML(BYID[c.id])).join('') + (own.length > tampil.length ? `<div class="empty">… dan ${own.length - tampil.length} aturan lain. Semua ikut terbaca di pencarian dan garis waktu.</div>` : '') : '<div class="empty">Belum ada. Aturan yang Anda simpan muncul di sini dan ikut terbaca di pencarian dan garis waktu.</div>';
 }
@@ -2888,6 +2899,7 @@ function init(){
     const rd = new FileReader(); rd.onload = () => importText(String(rd.result)); rd.onerror = () => toast('File tidak bisa dibaca.'); rd.readAsText(f, 'utf-8');
     e.target.value = '';
   };
+  $('#cust-toggle').onclick = () => { saveJSON(CUST_TAMPIL_KEY, !loadJSON(CUST_TAMPIL_KEY, false)); renderCustom(); };
   $('#clearall').onclick = e => {
     const b = e.currentTarget;
     if(b.dataset.confirm !== '1'){ b.dataset.confirm = '1'; b.textContent = 'Klik sekali lagi untuk menghapus semua'; return; }
