@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-svhNzsyWxh0tnV10xd/1gcEmk5gGShOtgH44hCJLJZ0=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-Rwxy0Zu22Z+zhS12FaEjbG9e+r8juPVh5DZvs+L6iwc=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -2039,7 +2039,14 @@ function cekKutipan(id, kutipan){
   let n = 0; const semua = N.r4 || (N.r4 = new Set(N.segs.flatMap(g => [...(g.r4 || (g.r4 = new Set(rangkai4(kataKutip(g.t)))))])));
   for(const x of r4) if(semua.has(x)) n++;
   const rasio = n / r4.length;
-  return {ok:false, label: label || (best && nBest ? best.l : null), rasio, tingkat: rasio >= 0.9 ? 'hampir' : rasio >= 0.6 ? 'sebagian' : 'tidak'};
+  let tingkat = rasio >= 0.9 ? 'hampir' : rasio >= 0.6 ? 'sebagian' : 'tidak', angka = false;
+  if(tingkat === 'hampir'){
+    // angka di kutipan yang sama sekali tidak ada di naskah (selain nomor pasal) tidak boleh lolos sebagai "hampir persis"
+    const ang = N.ang || (N.ang = new Set(N.segs.flatMap(g => kataKutip(g.t).filter(t => /\d/.test(t)))));
+    const w = kataKutip(potong.join(' '));
+    if(w.some((t, k) => /\d/.test(t) && !ang.has(t) && w[k - 1] !== 'pasal')){ tingkat = 'sebagian'; angka = true; }
+  }
+  return {ok:false, label: label || (best && nBest ? best.l : null), rasio, tingkat, angka};
 }
 function ambilJSON(t){
   const s = String(t || '').replace(/```(?:json)?/gi, '');
@@ -2066,6 +2073,7 @@ function kartuAspek(a, x, i){
   const cek = [ca, cb].filter(Boolean);
   const URUT_CEK = {persis:0, hampir:1, sebagian:2, tidak:3};
   const terburuk = cek.reduce((m, c) => URUT_CEK[c.tingkat] > URUT_CEK[m] ? c.tingkat : m, 'persis');
+  const angkaBeda = cek.some(c => c.angka);
   const PESAN_CEK = {persis:['ok', '✓ Kutipan ditemukan persis di naskah'],
     hampir:['ok', '✓ Kutipan cocok dengan naskah (hanya beda ejaan, tanda baca, atau salah ketik)'],
     sebagian:['sebagian', '◐ Kutipan dipendekkan atau sebagian diparafrase; baca bunyi lengkapnya di naskah sebelum dikutip'],
@@ -2080,7 +2088,7 @@ function kartuAspek(a, x, i){
     ${x.catatan ? `<p class="cat">${esc(x.catatan)}</p>` : ''}
     <div class="q">${kepala(a.a, x.lama, ca)}<div class="qt">${kiri}</div></div>
     <div class="q">${kepala(a.b, x.baru, cb)}<div class="qt">${kanan}</div></div>
-    <div class="cekq ${PESAN_CEK[terburuk][0]}">${PESAN_CEK[terburuk][1]}<span class="lihat">${cari(a.a, x.lama)}${cari(a.b, x.baru)}</span></div>
+    <div class="cekq ${PESAN_CEK[terburuk][0]}">${terburuk === 'sebagian' && angkaBeda ? '◐ Kutipan memuat angka yang tidak ada di naskah; cocokkan angkanya sebelum dikutip' : PESAN_CEK[terburuk][1]}<span class="lihat">${cari(a.a, x.lama)}${cari(a.b, x.baru)}</span></div>
     ${x.dicekUlang ? `<p class="chain" style="margin:6px 0 0">Sudah dicek ulang ${esc(x.dicekUlang)} dengan bagian pembanding dari naskah.</p>` : ''}
     ${blokSilang}
   </details>`;
