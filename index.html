@@ -2,12 +2,23 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-31s/nJPRfI7XakpaMZ8QR6PICJjWoEIq+Nrc+moBvE8=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-Obxw7Gk7oKBFrJVcda5qd2t8k90nOnjH9O9NYdygjdg=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Huruf IBM Plex disimpan bersama aplikasi (bukan dari Google Fonts): tidak ada permintaan ke server luar saat aplikasi dibuka. Lisensi: SIL OFL 1.1 */
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:400;font-display:swap;src:url('plex-sans-400.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:500;font-display:swap;src:url('plex-sans-500.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:600;font-display:swap;src:url('plex-sans-600.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:italic;font-weight:400;font-display:swap;src:url('plex-sans-400i.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:500;font-display:swap;src:url('plex-cond-500.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:600;font-display:swap;src:url('plex-cond-600.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:700;font-display:swap;src:url('plex-cond-700.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('plex-mono-400.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url('plex-mono-500.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('plex-mono-600.woff2') format('woff2')}
+</style>
 <style>
 /* Layout: arsip regulasi — bilah kendali atas, daftar aturan bergaya register (nomor mono di kiri), panel banding dua kolom yang menumpuk di ponsel */
 :root{
@@ -786,6 +797,8 @@ function samarkan(s){
           .replace(/\btaxand\b/gi, '').replace(/[ \t]{2,}/g, ' ');
 }
 // tautan dari data hanya boleh http(s); bentuk lain (mis. javascript:) dibuang
+const ID_AMAN = /^[a-z0-9][a-z0-9._-]{0,100}$/i;
+const idAman = id => ID_AMAN.test(String(id ?? ''));
 function urlAman(u){ const t = String(u || '').trim(); return /^https?:\/\//i.test(t) ? t : ''; }
 function samarkanAturan(r){
   if(!r || typeof r !== 'object') return r;
@@ -814,6 +827,7 @@ function simpanKur(){ return saveJSON(KUR_KEY, Object.fromEntries(Object.entries
 const NASKAH = {};            // id -> {segs:[{l,t,n}], full}
 const NASKAH_ST = {status:'memuat', meta:null, jumlah:0};
 function pasangNaskah(id, segs){
+  if(!idAman(id)) return;
   if(!Array.isArray(segs) || !segs.length){ delete NASKAH[id]; return; }
   const s = segs.map(x => Array.isArray(x) ? {l:String(x[0] ?? ''), t:samarkan(String(x[1] ?? ''))} : {l:String(x.l ?? ''), t:samarkan(String(x.t ?? ''))}).filter(g => g.t.trim());
   s.forEach(g => { g.n = norm(g.t); });
@@ -856,7 +870,7 @@ async function simpanRingData(){
 }
 function gabungRingData(peta){
   if(!peta || typeof peta !== 'object') return 0; let n = 0;
-  for(const [id, r] of Object.entries(peta)) if(r && r.teks){ RING_DATA[id] = {teks: samarkan(String(r.teks)), oleh: String(r.oleh || 'AI'), dibuat: String(r.dibuat || '')}; n++; }
+  for(const [id, r] of Object.entries(peta)) if(idAman(id) && r && r.teks){ RING_DATA[id] = {teks: samarkan(String(r.teks)), oleh: String(r.oleh || 'AI'), dibuat: String(r.dibuat || '')}; n++; }
   return n;
 }
 // Perbandingan siap pakai (BUAT-PERBANDINGAN.bat): {"lama|baru": {aspek:[…], oleh, dibuat, cakupan}}, IndexedDB kunci __banding__.
@@ -869,7 +883,7 @@ async function simpanBandData(){
 function gabungBandData(peta){
   if(!peta || typeof peta !== 'object') return 0; let n = 0;
   for(const [k, r] of Object.entries(peta)){
-    const [a, b] = String(k).split('|'); if(!a || !b || !r || !Array.isArray(r.aspek)) continue;
+    const [a, b] = String(k).split('|'); if(!idAman(a) || !idAman(b) || !r || !Array.isArray(r.aspek)) continue;
     const aspek = rapikanAspek({aspek: r.aspek.map(x => x && typeof x === 'object' ? {...x,
       lama: x.lama && x.lama.kutipan ? {...x.lama, kutipan: samarkan(String(x.lama.kutipan))} : null,
       baru: x.baru && x.baru.kutipan ? {...x.baru, kutipan: samarkan(String(x.baru.kutipan))} : null} : x)});
@@ -1327,7 +1341,7 @@ function diffStats(ops){ let a=0,d=0; ops.forEach(o => { const n = o.toks.filter
 const BEBAS = '__bebas';
 let CUR = {topic: BEBAS, a: null, b: null, mode: 'sides', free:{a:'', b:'', kw:'', pa:0, pb:0, pasangan:null}};
 function renderTopicList(){
-  const bebas = `<button data-topic="${BEBAS}" aria-current="${CUR.topic===BEBAS}" class="bebas">Bandingkan dua aturan bebas<small>Pilih aturan mana saja + kata kunci, mis. SP2DK</small></button>`;
+  const bebas = `<button data-topic="${BEBAS}" aria-current="${CUR.topic===BEBAS}" class="bebas">Bandingkan dua aturan bebas<small>Pilih aturan mana saja + kata kunci, mis. natura</small></button>`;
   const milik = daftarKurasiSaya();
   const kurSaya = milik.length ? '<div class="tlhead label">Kurasi saya</div>' + milik.map(x => `<button data-topic="kurasi:${esc(x.kunci)}" aria-current="${CUR.topic === BEBAS && CUR.free.kurasi === x.kunci}">${esc(x.kw || 'Isi')} · ${esc(cite(BYID[x.a]))} → ${esc(cite(BYID[x.b]))}<small>${x.aspek.length} aspek · ${esc(x.oleh || 'AI')}</small></button>`).join('') : '';
   $('#topiclist').innerHTML = bebas + kurSaya + '<div class="tlhead label">Ketentuan terkurasi</div>' + TOPICS.map(t => `<button data-topic="${t.id}" aria-current="${t.id===CUR.topic}">${esc(t.judul)}<small>${t.versi.length} versi · ${esc(t.versi[0].periode.split('–')[0])}–${esc(t.versi[t.versi.length-1].periode.split('–').pop())}</small></button>`).join('');
@@ -1839,11 +1853,13 @@ function pasangSaran(input, cari, setelahPilih){
 }
 function renderFree(){
   const S = CUR.free;
+  // contoh awal (sekali): diisi begitu data kedua aturan tersedia, termasuk bila data baru selesai dimuat sesudah aplikasi dibuka
+  if(!S.contoh && !S.a && !S.b && !S.kw && resolveRef('PMK 167/2018') && resolveRef('PMK 66/2023')){ S.contoh = true; S.a = 'PMK 167/2018'; S.b = 'PMK 66/2023'; S.kw = 'natura'; }
   const ia = resolveRef(S.a), ib = resolveRef(S.b);
   const ra = BYID[ia], rb = BYID[ib];
   let isi = '';
   if(!S.a.trim() || !S.b.trim()){
-    isi = `<div class="empty">Ketik atau pilih nomor dua aturan, mis. <b>SE 05/PJ/2022</b> dan <b>SE 8/PJ/2026</b>, lalu topik seperti <b>SP2DK</b>. Dari panel detail aturan, tombol "Bandingkan dengan …" mengisi kolom ini otomatis.</div>`;
+    isi = `<div class="empty">Ketik atau pilih nomor dua aturan, mis. <b>PMK 167/2018</b> dan <b>PMK 66/2023</b>, lalu topik seperti <b>natura</b>. Dari panel detail aturan, tombol "Bandingkan dengan …" mengisi kolom ini otomatis.</div>`;
   } else if(!ra || !rb){
     isi = `<div class="warnbox">Aturan ${!ra ? `"${esc(S.a)}"` : ''}${!ra && !rb ? ' dan ' : ''}${!rb ? `"${esc(S.b)}"` : ''} tidak ditemukan di basis data. Pilih dari daftar saran saat mengetik.</div>`;
   } else if(!NASKAH[ia] || !NASKAH[ib]){
@@ -1896,9 +1912,9 @@ function renderFree(){
     <h2 style="margin:4px 0 0">${S.kw ? (((KURASI[kunciKurasi(ia, ib, S.kw)] || {}).saring) ? `Aspek terkait “${esc(S.kw)}”` : `Perbedaan tentang “${esc(S.kw)}”`) : 'Perbedaan isi'}</h2>` : `
     <div style="display:grid;gap:4px"><h2>Bandingkan dua aturan</h2><p class="lead">Pilih aturan lama dan baru, lalu isi topik yang ingin dibandingkan. AI menyusun perbedaannya menjadi beberapa aspek singkat dengan kutipan dari naskah.</p></div>
     <form class="pickers" id="freeform">
-      <label><span class="label">Aturan lama</span><input type="text" id="fa" value="${esc(S.a)}" placeholder="mis. SE 05/PJ/2022" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"></label>
-      <label><span class="label">Aturan baru</span><input type="text" id="fb" value="${esc(S.b)}" placeholder="mis. SE 8/PJ/2026" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"></label>
-      <label><span class="label">Topik / kata kunci</span><input type="text" id="fk" value="${esc(S.kw)}" placeholder="mis. SP2DK, jangka waktu" autocomplete="off"></label>
+      <label><span class="label">Aturan lama</span><input type="text" id="fa" value="${esc(S.a)}" placeholder="mis. PMK 167/2018" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"></label>
+      <label><span class="label">Aturan baru</span><input type="text" id="fb" value="${esc(S.b)}" placeholder="mis. PMK 66/2023" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"></label>
+      <label><span class="label">Topik / kata kunci</span><input type="text" id="fk" value="${esc(S.kw)}" placeholder="mis. natura, jangka waktu" autocomplete="off"></label>
       <button class="btn" type="submit">Bandingkan</button>
     </form>
     ${ra && rb ? `<div class="chain"><button class="linkish" data-open="${ra.id}">${esc(cite(ra))}</button> ${esc(ra.judul)} → <button class="linkish" data-open="${rb.id}">${esc(cite(rb))}</button> ${esc(rb.judul)}</div>` : ''}`)
@@ -2431,7 +2447,7 @@ function openDetail(id, cariNaskah){
     ${(r.poin||[]).length ? `<div class="sect"><span class="label">Poin penting</span><ul class="pts">${r.poin.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
     ${banding.length ? `<div class="rel"><span class="label">Bandingkan isi</span>${banding.map(b => `<button class="linkish" data-banding="${b.lama}|${b.baru}" style="text-align:left">${esc(cite(BYID[b.lama]))} → ${esc(cite(BYID[b.baru]))}${NASKAH[b.lama] && NASKAH[b.baru] ? (BAND_DATA[b.lama + '|' + b.baru] ? ' <span class="siap">· perbandingan siap</span>' : '') : ' (naskah belum lengkap)'}</button>`).join('')}</div>` : ''}
     ${r._topics.length ? `<div class="rel"><span class="label">Ketentuan terkurasi</span>${r._topics.map(tid => { const t = TOPICS.find(x=>x.id===tid); return `<button class="linkish" data-topicjump="${tid}" data-reg="${r.id}" style="text-align:left">${esc(t.judul)} — ${t.versi.length} versi</button>`; }).join('')}</div>` : ''}
-    ${N ? `<details class="sect" ${q ? 'open' : ''}><summary class="label">Baca naskah (${N.segs.length} pasal/bagian)</summary><input type="search" id="nk-q" placeholder="Cari di naskah ini, mis. SP2DK" value="${esc(q)}" autocomplete="off"><div id="nk-list"></div></details>` : ''}
+    ${N ? `<details class="sect" ${q ? 'open' : ''}><summary class="label">Baca naskah (${N.segs.length} pasal/bagian)</summary><input type="search" id="nk-q" placeholder="Cari di naskah ini, mis. natura" value="${esc(q)}" autocomplete="off"><div id="nk-list"></div></details>` : ''}
     ${r.latar ? `<details class="sect"><summary class="label">Latar belakang (Menimbang)</summary><p style="margin:6px 0 0">${esc(r.latar)}</p></details>` : ''}
     ${(r.info||[]).length ? `<details class="sect"><summary class="label">Info pengolahan</summary><ul class="pts small">${r.info.map(p => `<li>${esc(p)}</li>`).join('')}</ul></details>` : ''}
     ${r.cek ? '<div class="warnbox">Status atau angka pada aturan ini perlu diverifikasi ke naskah resmi.</div>' : ''}
@@ -2637,7 +2653,7 @@ async function importText(txt){
   try{ data = JSON.parse(txt); }catch(err){ toast('File atau teks bukan JSON yang valid.'); return; }
   const arr = Array.isArray(data) ? data : (data && Array.isArray(data.aturan) ? data.aturan : null);
   if(!arr){ toast('Isi JSON harus berupa daftar aturan atau hasil skrip pengumpul.'); return; }
-  const valid = arr.filter(x => x && x.id && x.jenis && x.no && x.th && x.judul);
+  const valid = arr.filter(x => x && idAman(x.id) && x.jenis && x.no && x.th && x.judul);
   let baru = 0, ganti = 0, gabung = 0;
   valid.forEach(x => {
     const rec = samarkanAturan({...x, status: STATUS[x.status] ? x.status : 'belum'});
@@ -2702,7 +2718,7 @@ async function idbHapus(ids){
 }
 async function terapkanSelisih(p){
   (p.aturan || []).forEach(x => {
-    if(!x || !x.id || !x.jenis) return;
+    if(!x || !idAman(x.id) || !x.jenis) return;
     const rec = samarkanAturan({...x, status: STATUS[x.status] ? x.status : 'belum'}); delete rec.naskah; ambilRingData(rec);
     const i = CUSTOM.findIndex(c => c.id === rec.id); if(i >= 0) CUSTOM[i] = rec; else CUSTOM.push(rec);
   });
@@ -2856,7 +2872,6 @@ function init(){
   $('#cmppanel').addEventListener('toggle', e => { if(e.target.matches && e.target.matches('details.lipat')) CUR.free.lipat = e.target.open; }, true);
   $('#cmppanel').addEventListener('change', e => { if(e.target.id==='pick-a'){ CUR.a = +e.target.value; renderCompare(); } if(e.target.id==='pick-b'){ CUR.b = +e.target.value; renderCompare(); } });
   // contoh awal perbandingan bebas bila kedua aturan ada di data
-  if(resolveRef('SE 5/PJ/2022') && resolveRef('SE 8/PJ/2026')) CUR.free = {...CUR.free, a:'SE 05/PJ/2022', b:'SE 8/PJ/2026', kw:'SP2DK'};
   renderTopicList();
 
   // timeline
