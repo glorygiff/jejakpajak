@@ -1,7 +1,7 @@
 /* Service worker Jejak Pajak (versi web/PWA). Kerangka aplikasi disimpan supaya bisa dibuka tanpa internet.
    index.html diambil dari jaringan lebih dulu (maks. 4 detik) supaya perbaikan aplikasi langsung sampai;
-   data aturan diambil aplikasi sendiri dari GitHub dan disimpan di IndexedDB, tidak lewat sini. */
-const CACHE = 'jejak-pajak-8fc95bd5f2';
+   data aturan diambil aplikasi sendiri dari /data/ (cadangan: GitHub) dan disimpan di IndexedDB, tidak lewat sini. */
+const CACHE = 'jejak-pajak-e45c0c5c58';
 const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png', './plex-cond-500.woff2', './plex-cond-600.woff2', './plex-cond-700.woff2', './plex-mono-400.woff2', './plex-mono-500.woff2', './plex-mono-600.woff2', './plex-sans-400.woff2', './plex-sans-400i.woff2', './plex-sans-500.woff2', './plex-sans-600.woff2'];
 self.addEventListener('install', e => {
   // cache:'reload' supaya yang disimpan benar-benar versi terbaru, bukan salinan lama di cache browser
@@ -23,6 +23,7 @@ function dariJaringan(req){
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if(e.request.method !== 'GET' || u.origin !== location.origin) return;   // data GitHub dan huruf: langsung ke jaringan
+  if(u.pathname.includes('/data/')) return;   // data aturan (Pages Function): langsung ke jaringan, tidak disimpan di sini
   if(e.request.mode === 'navigate' || /\/(index\.html)?$/.test(u.pathname)){
     e.respondWith(dariJaringan(e.request).catch(() => caches.match('./index.html').then(r => r || caches.match('./'))));
     return;
