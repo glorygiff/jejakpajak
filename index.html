@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZCCogPOjodKJpFewP7QGJGDXcBMASCV3Dbl0lKc1cxg=' 'sha256-Obxw7Gk7oKBFrJVcda5qd2t8k90nOnjH9O9NYdygjdg=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-dTIOnePuUE/naCXWlmodROvggiW1+NTHjClZ4xdZQVM=' 'sha256-Vm8WhNqFaLx0CxLlS8JSeS77Z/fFgpbVhQGr8614WY4=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -344,7 +344,7 @@ header.top h1 span{color:var(--accent)}
 <meta name="apple-mobile-web-app-title" content="Jejak Pajak">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="description" content="Basis data peraturan perpajakan Indonesia: cari, telusuri silsilah, dan bandingkan ketentuan lama dengan yang baru.">
-<script>window.JEJAK_PEMBARUAN = 'https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/'; window.JEJAK_VERSI_APK = 0; window.JEJAK_PWA = true;</script>
+<script>window.JEJAK_PEMBARUAN = 'data/'; window.JEJAK_PEMBARUAN_CADANGAN = ['https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/']; window.JEJAK_VERSI_APK = 0; window.JEJAK_PWA = true;</script>
 </head>
 <body>
 
@@ -2703,9 +2703,22 @@ function renderApkBaru(){
   el.hidden = false;
   el.querySelector('[data-apk-tutup]').onclick = () => { saveJSON(APK_TUTUP_KEY, v); renderApkBaru(); };
 }
-function pbUrl(){ let u = (pbState().url || window.JEJAK_PEMBARUAN || '').trim(); if(u && !u.endsWith('/')) u += '/'; return u; }
-async function ambilTeksDaring(url, gz){
-  const res = await fetch(url, {cache:'no-store'});
+// Alamat data berurutan: utama (situs web sendiri, jejakpajak.pages.dev/data/), lalu cadangan (GitHub langsung).
+// GitHub diblokir di sebagian kantor, jadi alamat utama tidak boleh bergantung pada github.com.
+function pbUrls(){
+  const rapi = u => { u = String(u || '').trim(); return u && !u.endsWith('/') ? u + '/' : u; };
+  const a = [pbState().url, window.JEJAK_PEMBARUAN, ...(window.JEJAK_PEMBARUAN_CADANGAN || [])].map(rapi).filter(Boolean);
+  return a.filter((u, i) => a.indexOf(u) === i);
+}
+function pbUrl(){ return pbUrls()[0] || ''; }
+async function ambilTeksDaring(url, gz, batasMs){
+  // batasMs: alamat yang diblokir firewall kantor kadang tidak menjawab sama sekali, jadi diberi batas waktu
+  const henti = batasMs && typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const t = henti ? setTimeout(() => henti.abort(), batasMs) : 0;
+  let res;
+  try{ res = await fetch(url, henti ? {cache:'no-store', signal:henti.signal} : {cache:'no-store'}); }
+  catch(e){ throw new Error(henti && henti.signal.aborted ? 'tidak ada jawaban dari server' : 'tidak bisa terhubung'); }
+  finally{ if(t) clearTimeout(t); }
   if(!res.ok) throw new Error('HTTP ' + res.status);
   if(!gz) return await res.text();
   if(typeof DecompressionStream === 'undefined') throw new Error('WebView di HP ini terlalu lama untuk membuka file terkompresi');
@@ -2736,7 +2749,7 @@ async function terapkanSelisih(p){
   NASKAH_ST.meta = meta;
 }
 async function periksaPembaruan(manual){
-  const url = pbUrl(), s = pbState();
+  let url = pbUrl(); const s = pbState();
   if(!url){ if(manual) toast('Alamat pembaruan belum diatur'); return; }
   // Data yang dulu diambil oleh aplikasi versi lama (tanpa dukungan ringkasan AI) diambil ulang sekali secara lengkap,
   // karena aplikasi lama mengabaikan bagian ringkasan tetapi tetap mencatat versinya sebagai sudah terpasang.
@@ -2747,7 +2760,12 @@ async function periksaPembaruan(manual){
   const tulis = t => { s.pesan = t; pbSimpan(s); renderPembaruan(); };
   try{
     if(manual) tulis('Memeriksa pembaruan…');
-    const man = JSON.parse(await ambilTeksDaring(url + 'manifest.json?t=' + Date.now()));
+    let man = null, galat = null;
+    for(const u of pbUrls()){
+      try{ man = JSON.parse(await ambilTeksDaring(u + 'manifest.json?t=' + Date.now(), false, 20000)); url = u; break; }
+      catch(e){ galat = e; }
+    }
+    if(!man) throw galat || new Error('tidak bisa terhubung');
     s.dicek = new Date().toISOString();
     s.aplikasi = man.aplikasi && typeof man.aplikasi === 'object' ? man.aplikasi : null; pbSimpan(s); renderApkBaru();
     const lokal = s.versi;
