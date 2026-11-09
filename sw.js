@@ -1,7 +1,7 @@
 /* Service worker Jejak Pajak (versi web/PWA). Kerangka aplikasi disimpan supaya bisa dibuka tanpa internet.
    index.html diambil dari jaringan lebih dulu (maks. 4 detik) supaya perbaikan aplikasi langsung sampai;
    data aturan diambil aplikasi sendiri dari /data/ (cadangan: GitHub) dan disimpan di IndexedDB, tidak lewat sini. */
-const CACHE = 'jejak-pajak-e45c0c5c58';
+const CACHE = 'jejak-pajak-9b76931a22';
 const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png', './plex-cond-500.woff2', './plex-cond-600.woff2', './plex-cond-700.woff2', './plex-mono-400.woff2', './plex-mono-500.woff2', './plex-mono-600.woff2', './plex-sans-400.woff2', './plex-sans-400i.woff2', './plex-sans-500.woff2', './plex-sans-600.woff2'];
 self.addEventListener('install', e => {
   // cache:'reload' supaya yang disimpan benar-benar versi terbaru, bukan salinan lama di cache browser
@@ -9,7 +9,7 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(ks => Promise.all(ks.filter(k => k.startsWith('jejak-pajak-') && k !== CACHE).map(k => caches.delete(k))))
+    .then(ks => Promise.all(ks.filter(k => k.startsWith('jejak-pajak-') && k !== CACHE && !k.endsWith('-vendor')).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 function dariJaringan(req){
@@ -24,6 +24,11 @@ self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if(e.request.method !== 'GET' || u.origin !== location.origin) return;   // data GitHub dan huruf: langsung ke jaringan
   if(u.pathname.includes('/data/')) return;   // data aturan (Pages Function): langsung ke jaringan, tidak disimpan di sini
+  if(u.pathname.includes('/lampiran/')) return;   // lampiran PDF (Cloudflare R2): langsung ke jaringan, cache browser biasa
+  if(u.pathname.includes('/vendor/')){   // pdf.js dan pdf-lib: nama folder memuat nomor versi, jadi aman disimpan permanen
+    e.respondWith(caches.open('jejak-pajak-vendor').then(c => c.match(e.request).then(r => r || fetch(e.request).then(x => { if(x.ok) c.put(e.request, x.clone()); return x; }))));
+    return;
+  }
   if(e.request.mode === 'navigate' || /\/(index\.html)?$/.test(u.pathname)){
     e.respondWith(dariJaringan(e.request).catch(() => caches.match('./index.html').then(r => r || caches.match('./'))));
     return;
