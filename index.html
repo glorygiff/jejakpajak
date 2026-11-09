@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-dTIOnePuUE/naCXWlmodROvggiW1+NTHjClZ4xdZQVM=' 'sha256-Vm8WhNqFaLx0CxLlS8JSeS77Z/fFgpbVhQGr8614WY4=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-/IifesvLa6tkjiGaqrjthSWs+tQ8tXCWsxZVrp/z0vI=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -318,6 +318,70 @@ details.lipat[open]{padding-bottom:14px} details.lipat[open]>summary{border-bott
 .pairlist button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .panel-sub{border:1px dashed var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;min-width:0}
 ul.pts.small{font-size:13px;color:var(--muted)}
+/* ===== Lampiran ===== */
+.tag.lamp{background:var(--accent-soft);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.ik-klip{vertical-align:-2px;margin-right:4px;flex:none}
+.tag.lamp .ik-klip{margin-right:0}
+.chip .ik-klip{margin-right:5px}
+.lamp-sect>summary.label{display:flex;align-items:center;gap:6px}
+.lamp-sect>summary.label .ik-klip{margin-right:0}
+.lamp-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:6px}
+.lamp-head .aksi{display:flex;gap:6px;flex-wrap:wrap}
+.lamp-head .btn{min-height:40px}
+.lamp-cari{display:block;width:100%;box-sizing:border-box;margin-top:6px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
+.lamp-list{margin-top:6px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.lamp-grp{padding:7px 12px 4px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--sunk);border-top:1px solid var(--line)}
+.lamp-grp:first-child{border-top:0}
+.lamp-row{display:grid;grid-template-columns:minmax(52px,auto) minmax(0,1fr) auto;gap:10px;align-items:center;padding:4px 6px 4px 12px;border-top:1px solid var(--line);min-height:48px;width:100%;box-sizing:border-box;text-align:left;font:inherit;color:var(--ink);background:transparent}
+.lamp-list>.lamp-row:first-child,.lamp-grp+.lamp-row{border-top:0}
+.lamp-row .no{font-family:var(--f-mono);font-weight:600;font-size:13.5px;color:var(--seal)}
+.lamp-row .isi{font-size:14px;line-height:1.35}
+.lamp-row .lamp-uk{color:var(--muted);font-size:12.5px}
+.lamp-row .ik{display:flex}
+.lamp-row .ik button{width:44px;height:44px;display:grid;place-items:center;border:0;background:transparent;color:var(--accent);border-radius:var(--r);cursor:pointer}
+.lamp-row .ik button:hover{background:var(--sunk)}
+.lamp-row .ik button:disabled,.btn.sibuk{opacity:.6;cursor:progress}
+.lamp-lagi{display:block;width:100%;padding:12px;border:0;border-top:1px solid var(--line);background:var(--surface);color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-align:center}
+.lamp-kosong{margin:0;padding:12px;color:var(--muted);font-size:14px}
+.lamp-cat{margin:2px 0 0}
+.lamp-rujuk{margin:0;font-size:14.5px;line-height:1.5}
+body.lv-buka{overflow:hidden}
+.lv{position:fixed;inset:0;z-index:25;background:var(--sunk);display:grid;grid-template-rows:auto auto minmax(0,1fr);grid-template-columns:minmax(0,1fr);color:var(--ink);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
+.lv-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface)}
+.lv-bar .t{flex:1;min-width:0}
+.lv-bar .t .cite{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv-bar .t .chain{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv-bar .btn{min-height:40px;flex:none}
+.lv-pilih{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--surface)}
+.lv-pilih select{width:100%;min-height:44px;font-size:16px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink)}
+.lv-pilih button{height:44px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r);font-size:20px;cursor:pointer}
+.lv-pilih button:disabled{opacity:.35;cursor:default}
+.lv-badan{display:grid;grid-template-columns:minmax(0,1fr);min-height:0;position:relative}
+.lv-sisi{display:none}
+.lv-hal{overflow:auto;min-width:0;padding:16px 16px calc(80px + env(safe-area-inset-bottom,0px));outline:none;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.lv-bag{display:grid;gap:12px;justify-items:center;margin-bottom:24px;scroll-margin-top:8px}
+.lv-lebar .lv-bag{justify-items:start}
+.lv-bag-judul{justify-self:stretch;margin:0;font-family:var(--f-mono);font-size:13px;font-weight:600;color:var(--seal);letter-spacing:.03em;border-bottom:1px solid var(--line);padding-bottom:6px}
+.lv-bag-judul span{color:var(--muted);font-weight:500}
+.lv-isi{display:grid;gap:14px;justify-items:inherit;width:100%}
+.lv-pg{position:relative;background:#fff;box-shadow:0 1px 8px rgba(0,0,0,.14);max-width:none}
+.lv-pg canvas{display:block;width:100%;height:100%}
+.lv-pg:not(.siap)::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(180deg,transparent 0 22px,#f0f0f0 22px 30px);opacity:.5}
+.lv-memuat{margin:24px 0;color:var(--muted);font-size:14px;text-align:center}
+.lv-galat{max-width:420px;text-align:center;color:var(--muted);font-size:14px;padding:24px 0}
+.lv-galat p{margin:0 0 10px}
+.lv-zoom{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);box-shadow:0 2px 10px rgba(0,0,0,.15);overflow:hidden}
+.lv-zoom button{min-width:44px;height:44px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:18px;cursor:pointer;padding:0 6px}
+.lv-zoom #lv-zoom{font-family:var(--f-mono);font-size:12.5px;min-width:58px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.lv-sisi .lamp-list{margin:0;border:0;border-radius:0}
+.lv-sisi .lamp-row{grid-template-columns:minmax(48px,auto) minmax(0,1fr);padding:10px 14px;cursor:pointer;border:0;border-top:1px solid var(--line);border-radius:0;min-height:44px}
+.lv-sisi .lamp-row:hover{background:var(--sunk)}
+.lv-sisi .lamp-row.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+@media (min-width:900px){
+  .lv-pilih{display:none}
+  .lv-badan:not(.tunggal){grid-template-columns:260px minmax(0,1fr)}
+  .lv-sisi{display:block;overflow:auto;border-right:1px solid var(--line);background:var(--surface)}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 <style>
@@ -344,7 +408,7 @@ header.top h1 span{color:var(--accent)}
 <meta name="apple-mobile-web-app-title" content="Jejak Pajak">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="description" content="Basis data peraturan perpajakan Indonesia: cari, telusuri silsilah, dan bandingkan ketentuan lama dengan yang baru.">
-<script>window.JEJAK_PEMBARUAN = 'data/'; window.JEJAK_PEMBARUAN_CADANGAN = ['https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/']; window.JEJAK_VERSI_APK = 0; window.JEJAK_PWA = true;</script>
+<script>window.JEJAK_PEMBARUAN = 'data/'; window.JEJAK_PEMBARUAN_CADANGAN = ['https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/']; window.JEJAK_VERSI_APK = 0; window.JEJAK_PWA = true; window.JEJAK_LAMPIRAN = 'lampiran/';</script>
 </head>
 <body>
 
@@ -390,6 +454,10 @@ header.top h1 span{color:var(--accent)}
       <div class="filters">
         <span class="label">Tema</span>
         <div class="chips" id="themechips"></div>
+      </div>
+      <div class="filters" id="f-lain" hidden>
+        <span class="label">Lainnya</span>
+        <div class="chips"><button type="button" class="chip" id="f-lamp" aria-pressed="false">Punya lampiran</button></div>
       </div>
       <div class="resultmeta"><span id="count"></span><button class="linkish" id="reset" hidden>Hapus semua filter</button></div>
       <div class="register" id="results"></div>
@@ -770,6 +838,358 @@ const SYNONYMS = {
   'natura':['natura','kenikmatan'],
   'pmse':['pmse','digital','tdln']
 };
+/* ===== Lampiran: potongan PDF per Lampiran I, II, ... dari Cloudflare R2 (lihat TERBITKAN-LAMPIRAN.bat) ===== */
+const LAMP_BASE = (typeof window.JEJAK_LAMPIRAN === 'string' && window.JEJAK_LAMPIRAN) || '';
+const LAMP_VENDOR = 'vendor/';
+const LAMP_PDFJS = LAMP_VENDOR + 'pdfjs-6.2.108/';
+const LAMP_BATAS = 5;            // daftar diringkas setelah 5 bagian
+const LAMP_CARI_MIN = 8;         // kotak cari muncul bila bagian lebih dari 8
+const LAMP_BUKA = new Set();     // aturan yang daftar lampirannya sedang dibuka penuh
+const IK_KLIP = '<svg class="ik-klip" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>';
+const IK_MATA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const IK_UNDUH = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
+
+// daftar bagian lampiran yang sah dari data (data datang dari luar: nama file dan angka diperiksa)
+function lampDaftar(r){
+  if(!r || !Array.isArray(r.lampiran) || !/^[a-z]+-\d+[a-z]?-\d{4}$/.test(r.id)) return [];
+  return r.lampiran.filter(b => b && /^[A-Za-z0-9-]+\.pdf$/.test(String(b.f || ''))).map(b => ({
+    n: String(b.n || 'Lampiran').slice(0, 60), f: String(b.f), h: Math.max(1, Math.min(9999, +b.h || 1)),
+    u: Math.max(0, +b.u || 0), v: String(b.v || '').replace(/[^0-9a-f]/gi, '').slice(0, 16)
+  }));
+}
+function lampKode(b){ const k = b.n.replace(/^lampiran\s*/i, '').trim(); return k || ''; }
+function lampGrup(b){ const k = lampKode(b); return (k.match(/^([IVX]+)[A-H]$/) || [])[1] || null; }
+function lampUkuran(u){ return !u ? '' : u >= 1048576 ? (u / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(u / 1024)) + ' KB'; }
+function lampUrl(r, b){ return LAMP_BASE + encodeURIComponent(r.id) + '/' + encodeURIComponent(b.f) + (b.v ? '?v=' + b.v : ''); }
+function lampSlug(r){ return cite(r).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+function lampNamaFile(r, b){ const ek = (b.f.match(/-lampiran(-[A-Za-z0-9-]+)?\.pdf$/) || [])[1] || ''; return `${lampSlug(r)}-lampiran${ek}.pdf`; }
+function lampJudul(b){ return b.n || 'Lampiran'; }
+function punyaLampiran(r){ return lampDaftar(r).length > 0; }
+function tagLampiran(r){ const n = Array.isArray(r.lampiran) ? lampDaftar(r).length : 0; return n ? `<span class="tag lamp">${IK_KLIP}${n} lampiran</span>` : ''; }
+function renderFilterLampiran(){
+  const w = $('#f-lain'), t = $('#f-lamp'); if(!w || !t) return;
+  const n = ALL.filter(punyaLampiran).length;
+  if(!n && F.lamp) F.lamp = false;
+  w.hidden = !n;
+  t.setAttribute('aria-pressed', F.lamp ? 'true' : 'false');
+  t.innerHTML = `${IK_KLIP}Punya lampiran<span class="n">${n}</span>`;
+}
+
+function lampBaris(r, L, i, opsi = {}){
+  const b = L[i], k = lampKode(b), judul = lampJudul(b);
+  const sub = `${b.h} halaman${b.u ? ` <span class="lamp-uk">· ${lampUkuran(b.u)}</span>` : ''}`;
+  if(opsi.sisi) return `<button type="button" class="lamp-row${opsi.aktif ? ' on' : ''}" data-lv-ke="${i}" aria-current="${opsi.aktif ? 'true' : 'false'}"><span class="no">${esc(k || '·')}</span><span class="isi">${sub}</span></button>`;
+  return `<div class="lamp-row" data-lamp-i="${i}"><span class="no">${esc(k || '·')}</span><span class="isi">${sub}</span>${LAMP_BASE ? `<span class="ik"><button type="button" data-lamp-lihat="${i}" aria-label="Lihat ${esc(judul)}" title="Lihat">${IK_MATA}</button><button type="button" data-lamp-unduh="${i}" aria-label="Unduh ${esc(judul)}" title="Unduh">${IK_UNDUH}</button></span>` : ''}</div>`;
+}
+function lampDaftarHTML(r, L, idx, opsi = {}){
+  let out = '', g0 = null;
+  const nGrup = {};
+  L.forEach(b => { const g = lampGrup(b); if(g) nGrup[g] = (nGrup[g] || 0) + 1; });
+  idx.forEach(i => {
+    const g = lampGrup(L[i]);
+    const tampil = g && nGrup[g] > 1 ? g : null;
+    if(tampil && tampil !== g0) out += `<div class="lamp-grp">Lampiran ${esc(tampil)}</div>`;
+    g0 = tampil;
+    out += lampBaris(r, L, i, {...opsi, aktif: opsi.aktif === i});
+  });
+  return out;
+}
+function blokLampiran(r){
+  const L = lampDaftar(r);
+  const rj = r.lampiran_rujuk && typeof r.lampiran_rujuk === 'object' ? r.lampiran_rujuk : null;
+  if(!L.length){
+    if(!rj || !rj.id) return '';
+    const t = BYID[rj.id] ? `<button class="linkish" data-open="${esc(rj.id)}">${esc(cite(BYID[rj.id]))}</button>` : esc(rj.kode || rj.id);
+    return `<div class="sect lamp-sect"><span class="label">${IK_KLIP}Lampiran</span><p class="lamp-rujuk">Lampiran undang-undang ini adalah naskah ${t} yang ditetapkan menjadi undang-undang. Buka aturan itu untuk membaca isinya.</p></div>`;
+  }
+  const hal = L.reduce((n, b) => n + b.h, 0), uk = L.reduce((n, b) => n + b.u, 0);
+  const banyak = L.length > 1, buka = LAMP_BUKA.has(r.id) || L.length <= LAMP_BATAS + 1;
+  const idx = L.map((_, i) => i).slice(0, buka ? L.length : LAMP_BATAS);
+  const kode = L.map(lampKode).filter(Boolean);
+  const rentang = banyak && kode.length > 1 ? `${kode[0]} sampai ${kode[kode.length - 1]}, berurutan seperti di naskah` : 'Halaman lampiran dari naskah resmi';
+  return `<details class="sect lamp-sect" id="lamp-sect" open><summary class="label">${IK_KLIP}Lampiran (${banyak ? `${L.length} bagian · ` : ''}${hal} halaman)</summary>
+    ${banyak ? `<div class="lamp-head"><span class="chain">${esc(rentang)}</span>${LAMP_BASE ? `<span class="aksi"><button type="button" class="btn ghost small" data-lamp-lihat="0">Lihat semua</button><button type="button" class="btn small" data-lamp-gabung>Unduh semua (1 PDF${uk ? ` · ${lampUkuran(uk)}` : ''}) ↓</button></span>` : ''}</div>` : ''}
+    ${banyak && buka && L.length > LAMP_CARI_MIN ? '<input type="search" class="lamp-cari" id="lamp-cari" placeholder="Cari nomor lampiran, mis. IV" aria-label="Cari nomor lampiran" autocomplete="off">' : ''}
+    <div class="lamp-list" id="lamp-list">${lampDaftarHTML(r, L, idx)}${L.length > LAMP_BATAS + 1 ? (buka ? '<button type="button" class="lamp-lagi" data-lamp-ringkas>Ringkas daftar ▲</button>' : `<button type="button" class="lamp-lagi" data-lamp-lagi>Tampilkan ${L.length - LAMP_BATAS} bagian lainnya ▼</button>`) : ''}</div>
+    <p class="chain lamp-cat">${LAMP_BASE ? 'Disalin apa adanya dari naskah resmi. Isi lampiran tidak ikut dicari dan tidak diringkas.' : 'Lampiran bisa dibuka di aplikasi Android atau situs Jejak Pajak.'}</p></details>`;
+}
+function pasangLampiran(r){
+  const sect = $('#lamp-sect'); if(!sect) return;
+  const L = lampDaftar(r);
+  sect.addEventListener('click', e => {
+    const t = e.target.closest('button'); if(!t) return;
+    if(t.hasAttribute('data-lamp-lihat')){ bukaPenampil(r, +t.dataset.lampLihat); return; }
+    if(t.hasAttribute('data-lamp-unduh')){ unduhLampiran(r, L[+t.dataset.lampUnduh], t); return; }
+    if(t.hasAttribute('data-lamp-gabung')){ unduhSemuaLampiran(r, t); return; }
+    if(t.hasAttribute('data-lamp-lagi') || t.hasAttribute('data-lamp-ringkas')){
+      if(t.hasAttribute('data-lamp-lagi')) LAMP_BUKA.add(r.id); else LAMP_BUKA.delete(r.id);
+      const atas = sect.getBoundingClientRect().top;
+      const baru = document.createElement('div'); baru.innerHTML = blokLampiran(r);
+      sect.replaceWith(baru.firstElementChild); pasangLampiran(r);
+      const s2 = $('#lamp-sect'); if(s2){ const d = $('#drawer'); d.scrollTop += s2.getBoundingClientRect().top - atas; if(t.hasAttribute('data-lamp-lagi')) ($('#lamp-cari') || s2.querySelector('[data-lamp-i="' + LAMP_BATAS + '"] button'))?.focus(); }
+    }
+  });
+  const q = $('#lamp-cari');
+  if(q) q.oninput = () => {
+    const s = q.value.trim().toUpperCase().replace(/^LAMPIRAN\s*/, '').replace(/[^A-Z0-9]/g, '');
+    const idx = L.map((_, i) => i).filter(i => !s || lampKode(L[i]).toUpperCase().replace(/[^A-Z0-9]/g, '').startsWith(s));
+    $('#lamp-list').innerHTML = (idx.length ? lampDaftarHTML(r, L, idx) : '<p class="lamp-kosong">Tidak ada lampiran dengan nomor itu.</p>') + '<button type="button" class="lamp-lagi" data-lamp-ringkas>Ringkas daftar ▲</button>';
+  };
+}
+
+/* --- ambil file (disimpan sementara di memori supaya tidak diunduh dua kali) --- */
+const LAMP_SIMPAN = new Map(); let LAMP_SIMPAN_UK = 0;
+async function ambilLampiran(r, b){
+  const url = lampUrl(r, b);
+  if(LAMP_SIMPAN.has(url)){ const x = LAMP_SIMPAN.get(url); LAMP_SIMPAN.delete(url); LAMP_SIMPAN.set(url, x); return x; }
+  let res;
+  try{ res = await fetch(url, {credentials: 'omit'}); }catch(e){ const g = new Error('Lampiran tidak bisa diambil; periksa internet.'); g.jaringan = true; throw g; }
+  if(!res.ok) throw new Error(res.status === 404 ? 'File lampiran belum tersedia di server.' : `Server lampiran menjawab HTTP ${res.status}.`);
+  const isi = new Uint8Array(await res.arrayBuffer());
+  if(isi.length < 5 || String.fromCharCode(...isi.subarray(0, 5)) !== '%PDF-') throw new Error('File yang diterima bukan PDF.');
+  LAMP_SIMPAN.set(url, isi); LAMP_SIMPAN_UK += isi.length;
+  for(const [k, v] of LAMP_SIMPAN){ if(LAMP_SIMPAN_UK <= 80 * 1048576 || k === url) break; LAMP_SIMPAN.delete(k); LAMP_SIMPAN_UK -= v.length; }
+  return isi;
+}
+
+/* --- simpan file ke perangkat: browser memakai unduhan biasa, APK memakai jembatan JejakBerkas --- */
+const BERKAS = (() => { try{ return window.JejakBerkas && typeof window.JejakBerkas.mulai === 'function' ? window.JejakBerkas : null; }catch(e){ return null; } })();
+function keBase64(u8){ let s = ''; for(let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+async function simpanBerkas(isi, nama){
+  if(BERKAS){
+    const id = BERKAS.mulai(nama);
+    if(!id) throw new Error('Penyimpanan di HP tidak bisa dimulai.');
+    const POT = 3 * 256 * 1024;
+    for(let i = 0; i < isi.length; i += POT){
+      if(!BERKAS.tulis(id, keBase64(isi.subarray(i, i + POT)))) throw new Error('Gagal menulis file di HP.');
+      await new Promise(ok => setTimeout(ok, 0));
+    }
+    let h = {}; try{ h = JSON.parse(BERKAS.selesai(id, nama) || '{}'); }catch(e){}
+    if(h.ok === false) throw new Error(h.pesan || 'Gagal menyimpan file.');
+    if(h.pesan) toast(h.pesan);
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([isi], {type: 'application/pdf'}));
+  const a = document.createElement('a'); a.href = url; a.download = nama; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+function tombolSibuk(t, teks){ if(!t) return () => {}; const lama = t.innerHTML, lbl = t.getAttribute('aria-label'); t.disabled = true; t.classList.add('sibuk'); if(teks != null && !t.querySelector('svg')) t.textContent = teks; return () => { t.disabled = false; t.classList.remove('sibuk'); t.innerHTML = lama; if(lbl) t.setAttribute('aria-label', lbl); }; }
+async function unduhLampiran(r, b, t){
+  if(!b) return;
+  const pulih = tombolSibuk(t, 'Mengunduh…');
+  try{ await simpanBerkas(await ambilLampiran(r, b), lampNamaFile(r, b)); if(!BERKAS) toast(`${lampJudul(b)} diunduh`); }
+  catch(e){ toast(e.message || 'Gagal mengunduh lampiran'); }
+  finally{ pulih(); }
+}
+let PDFLIB = null;
+function muatSkrip(src){ return new Promise((ok, gagal) => { const s = document.createElement('script'); s.src = src; s.async = true; s.onload = ok; s.onerror = () => gagal(new Error('Komponen penggabung PDF gagal dimuat; periksa internet.')); document.head.appendChild(s); }); }
+async function muatPdfLib(){ if(PDFLIB) return PDFLIB; if(!window.PDFLib) await muatSkrip(LAMP_VENDOR + 'pdf-lib-1.17.1.min.js'); return PDFLIB = window.PDFLib; }
+let LAMP_GABUNG_JALAN = false;
+async function unduhSemuaLampiran(r, t){
+  if(LAMP_GABUNG_JALAN) return;
+  const L = lampDaftar(r); if(!L.length) return;
+  if(L.length === 1) return unduhLampiran(r, L[0], t);
+  LAMP_GABUNG_JALAN = true;
+  const pulih = tombolSibuk(t, 'Menyiapkan…');
+  try{
+    const lib = muatPdfLib();
+    const isi = [];
+    for(let i = 0; i < L.length; i++){
+      if(t) t.textContent = `Mengambil ${i + 1}/${L.length}…`;
+      isi.push(await ambilLampiran(r, L[i]));
+    }
+    if(t) t.textContent = 'Menggabungkan…';
+    const {PDFDocument} = await lib;
+    const out = await PDFDocument.create();
+    for(const u8 of isi){
+      const src = await PDFDocument.load(u8, {ignoreEncryption: true, updateMetadata: false});
+      (await out.copyPages(src, src.getPageIndices())).forEach(p => out.addPage(p));
+    }
+    out.setTitle(`Lampiran ${cite(r)}`); out.setProducer('Jejak Pajak');
+    await simpanBerkas(await out.save(), `${lampSlug(r)}-lampiran-lengkap.pdf`);
+    if(!BERKAS) toast(`${L.length} lampiran digabung dalam 1 PDF`);
+  }catch(e){
+    toast(e.jaringan || /internet|server|HTTP/.test(e.message || '') ? e.message : 'Lampiran tidak bisa digabung; unduh per bagian.');
+  }finally{ LAMP_GABUNG_JALAN = false; pulih(); }
+}
+
+/* --- penampil PDF (pdf.js dimuat saat pertama kali dibutuhkan) --- */
+let PDFJS = null;
+async function muatPdfjs(){
+  if(PDFJS) return PDFJS;
+  const dasar = new URL(LAMP_PDFJS, location.href).href;
+  const m = await import(dasar + 'pdf.min.js');
+  m.GlobalWorkerOptions.workerSrc = dasar + 'pdf.worker.min.js';
+  return PDFJS = m;
+}
+let LV = null;   // penampil yang sedang terbuka
+function penampilTerbuka(){ return !!LV; }
+function tutupPenampil(){
+  if(!LV) return;
+  const v = LV; LV = null;
+  v.amati?.disconnect(); v.amatiBag?.disconnect(); v.amatiAktif?.disconnect();
+  v.dok.forEach(d => { try{ d && d.destroy && d.destroy(); }catch(e){} });
+  v.el.remove();
+  document.body.classList.remove('lv-buka');
+  const kembali = v.asal && document.contains(v.asal) ? v.asal : $('#lamp-sect button');
+  kembali?.focus();
+}
+function bukaPenampil(r, ke = 0){
+  const L = lampDaftar(r); if(!L.length || !LAMP_BASE) return;
+  tutupPenampil();
+  const el = document.createElement('div');
+  el.className = 'lv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', `Lampiran ${cite(r)}`);
+  const banyak = L.length > 1;
+  el.innerHTML = `<div class="lv-bar"><button type="button" class="btn ghost small" data-lv-tutup>← Kembali</button>
+      <div class="t"><div class="cite">${esc(cite(r))} · <span id="lv-nama"></span></div><div class="chain" id="lv-sub"></div></div>
+      <button type="button" class="btn small" data-lv-unduh aria-label="Unduh lampiran ini">Unduh ↓</button></div>
+    ${banyak ? `<div class="lv-pilih"><button type="button" data-lv-geser="-1" aria-label="Lampiran sebelumnya">‹</button><select id="lv-pilih" aria-label="Pilih lampiran">${L.map((b, i) => `<option value="${i}">${esc(lampJudul(b))} · ${b.h} halaman</option>`).join('')}</select><button type="button" data-lv-geser="1" aria-label="Lampiran berikutnya">›</button></div>` : ''}
+    <div class="lv-badan${banyak ? '' : ' tunggal'}">${banyak ? `<nav class="lv-sisi" aria-label="Daftar lampiran"><div class="lamp-list" id="lv-sisi">${lampDaftarHTML(r, L, L.map((_, i) => i), {sisi: true, aktif: ke})}</div></nav>` : ''}
+      <div class="lv-hal" id="lv-hal" tabindex="-1">${L.map((b, i) => `<section class="lv-bag" data-bag="${i}" aria-label="${esc(lampJudul(b))}">${banyak ? `<h3 class="lv-bag-judul">${esc(lampJudul(b))} <span>· ${b.h} halaman</span></h3>` : ''}<div class="lv-isi" style="--n:${b.h}"><p class="lv-memuat">Memuat…</p></div></section>`).join('')}</div>
+      <div class="lv-zoom"><button type="button" data-lv-zoom="-1" aria-label="Perkecil">−</button><button type="button" data-lv-zoom="0" aria-label="Ukuran pas layar" id="lv-zoom">100%</button><button type="button" data-lv-zoom="1" aria-label="Perbesar">+</button></div>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.classList.add('lv-buka');
+  LV = {r, L, el, aktif: -1, zoom: 1, dok: [], muat: [], asal: document.activeElement};
+  const hal = el.querySelector('#lv-hal');
+  // halaman digambar saat mendekati layar dan dilepas lagi saat jauh, supaya memori HP tidak habis
+  LV.amati = new IntersectionObserver(es => es.forEach(e => { const c = e.target; if(e.isIntersecting) gambarHalaman(c); else lepasHalaman(c); }), {root: hal, rootMargin: '150% 0px'});
+  LV.amatiBag = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting) muatBagian(+e.target.dataset.bag); }), {root: hal, rootMargin: '100% 0px'});
+  LV.amatiAktif = new IntersectionObserver(() => tandaiAktif(), {root: hal, threshold: [0, .25, .5, .75, 1]});
+  el.querySelectorAll('.lv-bag').forEach(s => { LV.amatiBag.observe(s); LV.amatiAktif.observe(s); });
+  el.addEventListener('click', e => {
+    const t = e.target.closest('button'); if(!t) return;
+    if(t.hasAttribute('data-lv-tutup')) tutupPenampil();
+    else if(t.hasAttribute('data-lv-unduh')){ const i = Math.max(0, LV.aktif); unduhLampiran(r, L[i], t); }
+    else if(t.hasAttribute('data-lv-geser')) lompatBagian(Math.min(L.length - 1, Math.max(0, LV.aktif + +t.dataset.lvGeser)));
+    else if(t.hasAttribute('data-lv-ke')) lompatBagian(+t.dataset.lvKe);
+    else if(t.hasAttribute('data-lv-zoom')) ubahZoom(+t.dataset.lvZoom);
+  });
+  el.querySelector('#lv-pilih')?.addEventListener('change', e => lompatBagian(+e.target.value));
+  el.addEventListener('keydown', e => { if(e.key === 'Escape'){ e.stopPropagation(); tutupPenampil(); } });
+  hal.addEventListener('wheel', e => { if(e.ctrlKey){ e.preventDefault(); ubahZoom(e.deltaY < 0 ? 1 : -1); } }, {passive: false});
+  setAktif(ke);
+  perkiraanTinggi();
+  requestAnimationFrame(() => { lompatBagian(ke, true); el.querySelector('[data-lv-tutup]').focus(); });
+}
+function setAktif(i){
+  if(!LV || i === LV.aktif || i < 0) return;
+  LV.aktif = i;
+  const b = LV.L[i];
+  LV.el.querySelector('#lv-nama').textContent = lampJudul(b);
+  LV.el.querySelector('#lv-sub').textContent = `${b.h} halaman${b.u ? ' · ' + lampUkuran(b.u) : ''}${LV.L.length > 1 ? ` · bagian ${i + 1} dari ${LV.L.length}` : ''}`;
+  const p = LV.el.querySelector('#lv-pilih'); if(p) p.value = String(i);
+  LV.el.querySelectorAll('.lv-sisi [data-lv-ke]').forEach(x => { const on = +x.dataset.lvKe === i; x.classList.toggle('on', on); x.setAttribute('aria-current', on ? 'true' : 'false'); if(on) x.scrollIntoView({block: 'nearest'}); });
+  LV.el.querySelectorAll('[data-lv-geser]').forEach(x => { x.disabled = (+x.dataset.lvGeser < 0 && i === 0) || (+x.dataset.lvGeser > 0 && i === LV.L.length - 1); });
+}
+function tandaiAktif(){
+  if(!LV || LV.lompat) return;
+  const hal = LV.el.querySelector('#lv-hal'), atas = hal.getBoundingClientRect().top + hal.clientHeight * .3;
+  let pilih = 0;
+  LV.el.querySelectorAll('.lv-bag').forEach(s => { if(s.getBoundingClientRect().top <= atas) pilih = +s.dataset.bag; });
+  setAktif(pilih);
+}
+function lompatBagian(i, awal){
+  if(!LV) return;
+  const s = LV.el.querySelector(`.lv-bag[data-bag="${i}"]`); if(!s) return;
+  setAktif(i);
+  LV.lompat = true;
+  muatBagian(i).finally(() => { if(LV){ s.scrollIntoView({block: 'start'}); setTimeout(() => { if(LV) LV.lompat = false; }, 120); } });
+  s.scrollIntoView({block: 'start'});
+  if(!awal) LV.el.querySelector('#lv-hal').focus({preventScroll: true});
+}
+function lebarHalaman(){
+  const hal = LV.el.querySelector('#lv-hal');
+  return Math.max(200, Math.min(hal.clientWidth - 32, 880)) * LV.zoom;
+}
+function muatBagian(i){
+  if(!LV) return Promise.resolve();
+  if(LV.muat[i]) return LV.muat[i];
+  const v = LV, b = v.L[i], wadah = v.el.querySelector(`.lv-bag[data-bag="${i}"] .lv-isi`);
+  return v.muat[i] = (async () => {
+    try{
+      const [isi, pdfjs] = await Promise.all([ambilLampiran(v.r, b), muatPdfjs()]);
+      if(LV !== v) return;
+      const dok = await pdfjs.getDocument({data: isi.slice(), isEvalSupported: false, wasmUrl: new URL(LAMP_PDFJS + 'wasm/', location.href).href,
+        useSystemFonts: true, disableFontFace: false, enableXfa: false, stopAtErrors: false}).promise;
+      if(LV !== v){ dok.destroy(); return; }
+      v.dok[i] = dok;
+      const frag = document.createDocumentFragment();
+      for(let p = 1; p <= dok.numPages; p++){
+        const pg = await dok.getPage(p);
+        const vp = pg.getViewport({scale: 1});
+        const c = document.createElement('div');
+        c.className = 'lv-pg'; c.dataset.bag = i; c.dataset.p = p; c.style.aspectRatio = `${vp.width} / ${vp.height}`;
+        c.setAttribute('role', 'img'); c.setAttribute('aria-label', `${lampJudul(b)}, halaman ${p} dari ${dok.numPages}`);
+        c._pg = pg; c._rasio = vp.height / vp.width;
+        frag.appendChild(c);
+      }
+      if(LV !== v) return;
+      wadah.innerHTML = ''; wadah.style.minHeight = ''; wadah.appendChild(frag);
+      aturLebar(wadah);
+      wadah.querySelectorAll('.lv-pg').forEach(c => v.amati.observe(c));
+    }catch(e){
+      if(LV !== v) return;
+      v.muat[i] = null;
+      wadah.innerHTML = `<div class="lv-galat"><p>${esc(e && e.message && !/^[A-Z][a-zA-Z]+Error/.test(e.name || '') ? e.message : 'Lampiran ini tidak bisa ditampilkan di sini.')}</p><p><button type="button" class="btn small" data-lv-ulang="${i}">Coba lagi</button> <a class="btn ghost small" href="${esc(lampUrl(v.r, b))}" target="_blank" rel="noopener">Buka PDF ↗</a></p></div>`;
+      wadah.querySelector('[data-lv-ulang]').onclick = () => { wadah.innerHTML = '<p class="lv-memuat">Memuat…</p>'; muatBagian(i); };
+    }
+  })();
+}
+function aturLebar(wadah){
+  const w = lebarHalaman();
+  (wadah || LV.el).querySelectorAll('.lv-pg').forEach(c => { c.style.width = w + 'px'; });
+}
+async function gambarHalaman(c){
+  if(!LV || !c._pg || c._digambar === LV.zoom) return;
+  c._digambar = LV.zoom;
+  const tugasLama = c._tugas; if(tugasLama){ try{ tugasLama.cancel(); }catch(e){} }
+  const w = c.getBoundingClientRect().width || lebarHalaman();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let skala = (w * dpr) / c._pg.getViewport({scale: 1}).width;
+  const vp0 = c._pg.getViewport({scale: skala});
+  const maks = 12e6;   // batas piksel per halaman (memori HP)
+  if(vp0.width * vp0.height > maks) skala *= Math.sqrt(maks / (vp0.width * vp0.height));
+  const vp = c._pg.getViewport({scale: skala});
+  const kanvas = document.createElement('canvas');
+  kanvas.width = Math.floor(vp.width); kanvas.height = Math.floor(vp.height);
+  const tugas = c._pg.render({canvasContext: kanvas.getContext('2d', {alpha: false}), viewport: vp, background: '#ffffff'});
+  c._tugas = tugas;
+  try{
+    await tugas.promise;
+    if(c._tugas !== tugas) return;
+    c.querySelector('canvas')?.remove(); c.appendChild(kanvas); c.classList.add('siap');
+  }catch(e){ if(e && e.name !== 'RenderingCancelledException'){ c._digambar = null; } }
+  finally{ if(c._tugas === tugas) c._tugas = null; }
+}
+function lepasHalaman(c){
+  if(c._tugas){ try{ c._tugas.cancel(); }catch(e){} c._tugas = null; }
+  const k = c.querySelector('canvas'); if(k){ k.width = k.height = 0; k.remove(); }
+  c.classList.remove('siap'); c._digambar = null;
+}
+function ubahZoom(arah){
+  if(!LV) return;
+  const tangga = [.5, .67, .8, 1, 1.25, 1.5, 2, 2.5, 3];
+  const hal = LV.el.querySelector('#lv-hal');
+  const rel = hal.scrollHeight ? (hal.scrollTop + hal.clientHeight / 2) / hal.scrollHeight : 0;
+  const k = tangga.indexOf(LV.zoom);
+  LV.zoom = arah === 0 ? 1 : tangga[Math.max(0, Math.min(tangga.length - 1, (k < 0 ? 3 : k) + arah))];
+  LV.el.querySelector('#lv-zoom').textContent = Math.round(LV.zoom * 100) + '%';
+  LV.el.classList.toggle('lv-lebar', LV.zoom > 1);
+  aturLebar(); perkiraanTinggi();
+  hal.scrollTop = rel * hal.scrollHeight - hal.clientHeight / 2;
+  gambarUlangTerlihat();
+}
+// halaman di sekitar layar digambar ulang dengan ukuran baru (observer hanya memicu saat keluar-masuk)
+function gambarUlangTerlihat(){
+  const hal = LV.el.querySelector('#lv-hal'), t = hal.getBoundingClientRect();
+  LV.el.querySelectorAll('.lv-pg').forEach(c => { const b = c.getBoundingClientRect(); if(b.bottom > t.top - t.height * 1.5 && b.top < t.bottom + t.height * 1.5) gambarHalaman(c); else lepasHalaman(c); });
+}
+function perkiraanTinggi(){
+  const w = lebarHalaman();
+  LV.el.querySelectorAll('.lv-isi').forEach(x => { if(!x.querySelector('.lv-pg')) x.style.minHeight = Math.round((+x.style.getPropertyValue('--n') || 1) * (w * 1.414 + 14)) + 'px'; });
+}
+window.addEventListener('resize', () => { if(!LV) return; clearTimeout(LV._rs); LV._rs = setTimeout(() => { if(!LV) return; aturLebar(); perkiraanTinggi(); LV.el.querySelectorAll('.lv-pg').forEach(c => { c._digambar = null; }); gambarUlangTerlihat(); }, 200); });
 /* ===== Utilities ===== */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1087,6 +1507,8 @@ function rebuild(){
       ['ubah','cabut','terkait'].forEach(k => (c[k]||[]).forEach(id => { if(id !== b.id && !b[k].includes(id)) b[k].push(id); }));
       ['isi_pokok','kata_kunci','latar','info'].forEach(k => { if(c[k] && (!b[k] || !b[k].length)) b[k] = c[k]; });
       if(c.sumber_url && !b.sumber_url) b.sumber_url = c.sumber_url;
+      if(Array.isArray(c.lampiran) && c.lampiran.length) b.lampiran = c.lampiran;
+      if(c.lampiran_rujuk) b.lampiran_rujuk = c.lampiran_rujuk;
       b.diperkaya = true;
     } else extra.push({...c, custom:true});
   });
@@ -1180,6 +1602,7 @@ function searchRegs(q, f){
   for(const r of ALL){
     if(f.jenis && r.jenis !== f.jenis) continue;
     if(f.status && r.status !== f.status) continue;
+    if(f.lamp && !punyaLampiran(r)) continue;
     if(f.tema.size && !(r.tema||[]).some(t => f.tema.has(t))) continue;
     let score = 0, viaIdx = true;
     for(const g of groups){
@@ -1254,14 +1677,14 @@ function rowHTML(r, groups=[], ch=null, viaIdx=true, gIsi=groups){
     <div class="cite">${highlight(cite(r), groups)}<small>${esc(r.berlaku||r.th)}</small></div>
     <div class="body">
       <div class="title">${highlight(r.judul, groups)}</div>
-      <div class="meta">${statePill(r)}${(r.tema||[]).map(t => `<span class="tag">${esc(themeLabel(t))}</span>`).join('')}</div>
+      <div class="meta">${statePill(r)}${(r.tema||[]).map(t => `<span class="tag">${esc(themeLabel(t))}</span>`).join('')}${tagLampiran(r)}</div>
       ${snip}${hit}
       ${chainLine(r)}
     </div></button>`;
 }
 
 const URUT_KEY = 'jejak-aturan-pajak:urutan:v1';
-const F = {jenis:'', status:'', sort:(['rel','new','old'].includes(loadJSON(URUT_KEY, 'rel')) ? loadJSON(URUT_KEY, 'rel') : 'rel'), tema:new Set(), batas:100, semua:false};
+const F = {jenis:'', status:'', lamp:false, sort:(['rel','new','old'].includes(loadJSON(URUT_KEY, 'rel')) ? loadJSON(URUT_KEY, 'rel') : 'rel'), tema:new Set(), batas:100, semua:false};
 const CONTOH_CARI = ['SP2DK', 'natura', 'PMK 81/2024', 'sanksi bunga', 'UMKM', 'restitusi', 'faktur pajak', 'Coretax'];
 function berandaHTML(nNas){
   const n = j => ALL.filter(r => r.jenis === j).length;
@@ -1277,11 +1700,11 @@ function berandaHTML(nNas){
 function renderSearch(){
   if(!$('#results')) return;
   const q = $('#q').value;
-  const {list, groups, gIsi} = (q.trim() || F.jenis || F.status || F.tema.size || F.semua) ? searchRegs(q, F) : {list: [], groups: [], gIsi: []};
+  const {list, groups, gIsi} = (q.trim() || F.jenis || F.status || F.lamp || F.tema.size || F.semua) ? searchRegs(q, F) : {list: [], groups: [], gIsi: []};
   const nNas = Object.keys(NASKAH).length;
   const isiInfo = NASKAH_ST.status === 'memuat' ? ' · memuat isi naskah…' : (nNas ? ` · isi naskah ${nNas} aturan ikut dicari` : ' · isi naskah belum diimpor (cari hanya judul dan ringkasan)');
   const lewat = list.filter(o => !o.viaIdx).length;
-  const adaFilter = !!(q.trim() || F.jenis || F.status || F.tema.size);
+  const adaFilter = !!(q.trim() || F.jenis || F.status || F.lamp || F.tema.size);
   if(!adaFilter && !F.semua){   // halaman muka: belum ada pencarian atau filter, jangan tampilkan seluruh daftar
     $('#count').textContent = '';
     $('#reset').hidden = true;
@@ -2441,6 +2864,7 @@ function openDetail(id, cariNaskah){
     <button class="x" id="close" aria-label="Tutup">Tutup ✕</button>
     <div style="display:grid;gap:6px"><span class="cite" style="font-size:16px">${esc(cite(r))}</span><span class="label">Tentang</span><h2>${esc(r.judul)}</h2><div class="meta">${statePill(r)}${(r.tema||[]).map(t => `<span class="tag">${esc(themeLabel(t))}</span>`).join('')}</div></div>
     <dl class="kv"><dt>Berlaku</dt><dd>${esc(r.berlaku||r.th)}</dd>${rels.map(([k,v]) => `<dt>${k}</dt><dd>${link(v)}</dd>`).join('')}</dl>
+    ${blokLampiran(r)}
     ${blokRingkasan(r)}
     ${(r.isi_pokok||[]).length ? `<div class="sect"><span class="label">Isi pokok (dari susunan naskah)</span><ul class="pts">${r.isi_pokok.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
     ${(r.kata_kunci||[]).length ? `<div class="sect"><span class="label">Kata kunci khas</span><div class="chips">${r.kata_kunci.map(k => `<button class="chip small" data-cari="${esc(k)}">${esc(k)}</button>`).join('')}</div></div>` : ''}
@@ -2453,6 +2877,7 @@ function openDetail(id, cariNaskah){
     ${r.cek ? '<div class="warnbox">Status atau angka pada aturan ini perlu diverifikasi ke naskah resmi.</div>' : ''}
     <div class="filters">${urlAman(r.sumber_url) ? `<a class="btn small" href="${esc(urlAman(r.sumber_url))}" target="_blank" rel="noopener">${/jdih\.kemenkeu/i.test(r.sumber_url) ? 'Buka di JDIH' : /bpk\.go\.id/i.test(r.sumber_url) ? 'Buka di BPK' : /pajak\.go\.id/i.test(r.sumber_url) ? 'Buka di pajak.go.id' : 'Buka sumber'} ↗</a>` : ''}<a class="btn ghost small" href="${officialSearch(r)}" target="_blank" rel="noopener">Cari naskah resmi ↗</a>${r.custom && String(r.id).startsWith('c-') ? `<button class="btn danger small" data-del="${esc(r.id)}">Hapus aturan ini</button>` : ''}</div>`;
   if(N){ renderNaskahDrawer(r.id, q); $('#nk-q').oninput = e => renderNaskahDrawer(r.id, e.target.value); }
+  pasangLampiran(r);
   if($('#scrim').hidden){ $('#scrim').hidden = false; $('#close').focus(); }
 }
 function closeDetail(){ $('#scrim').hidden = true; DETAIL_ID = null; }
@@ -2552,7 +2977,7 @@ function renderJenisOptions(){
   $('#f-jenis').innerHTML = '<option value="">Semua jenis</option>' + ada.map(j => `<option value="${esc(j)}">${esc(JENIS_LABEL[j]||j)} (${n[j]})</option>`).join('');
   $('#f-jenis').value = F.jenis;
 }
-function refreshAll(){ rebuild(); renderJenisOptions(); renderThemeChips($('#themechips'), F.tema, renderSearch); renderThemeChips($('#tlchips'), TL.tema, renderTimeline); renderSearch(); renderTimeline(); renderCustom(); if(!$('#p-bandingkan').hidden) renderCompare(); }
+function refreshAll(){ rebuild(); renderJenisOptions(); renderFilterLampiran(); renderThemeChips($('#themechips'), F.tema, renderSearch); renderThemeChips($('#tlchips'), TL.tema, renderTimeline); renderSearch(); renderTimeline(); renderCustom(); if(!$('#p-bandingkan').hidden) renderCompare(); }
 
 /* ===== Aplikasi Android: pengaturan AI, data bawaan, tombol kembali ===== */
 /* Daftar penyedia AI bergaya kartu (seperti aplikasi Ritme): titik hijau = aktif, kuning = kunci tersimpan,
@@ -2623,10 +3048,11 @@ function initAndroid(){
   });
   // tombol Kembali Android: tutup panel detail dulu, lalu kembali ke tab Cari
   window.__jejakKembali = () => {
+    if(penampilTerbuka()){ tutupPenampil(); return true; }
     if(!$('#scrim').hidden){ closeDetail(); return true; }
     const aktif = TABS.find(t => !$('#p-' + t).hidden);
     if(aktif && aktif !== 'cari'){ showTab('cari'); return true; }
-    if($('#q').value || F.jenis || F.status || F.tema.size || F.semua){ $('#reset').click(); return true; }
+    if($('#q').value || F.jenis || F.status || F.lamp || F.tema.size || F.semua){ $('#reset').click(); return true; }
     return false;
   };
 }
@@ -2826,9 +3252,10 @@ function init(){
   renderJenisOptions();
   $('#f-jenis').onchange = e => { F.jenis = e.target.value; F.batas = 100; renderSearch(); };
   $('#f-status').onchange = e => { F.status = e.target.value; F.batas = 100; renderSearch(); };
+  $('#f-lamp') && ($('#f-lamp').onclick = () => { F.lamp = !F.lamp; F.batas = 100; renderFilterLampiran(); renderSearch(); });
   $('#f-sort').value = F.sort;
   $('#f-sort').onchange = e => { F.sort = e.target.value; saveJSON(URUT_KEY, F.sort); renderSearch(); };
-  $('#reset').onclick = () => { $('#q').value=''; F.jenis=F.status=''; F.tema.clear(); F.batas = 100; F.semua = false; $('#f-jenis').value=''; $('#f-status').value=''; renderThemeChips($('#themechips'), F.tema, renderSearch); renderSearch(); };
+  $('#reset').onclick = () => { $('#q').value=''; F.jenis=F.status=''; F.lamp = false; renderFilterLampiran(); F.tema.clear(); F.batas = 100; F.semua = false; $('#f-jenis').value=''; $('#f-status').value=''; renderThemeChips($('#themechips'), F.tema, renderSearch); renderSearch(); };
 
   document.querySelector('nav.tabs').onclick = e => { const b = e.target.closest('[role=tab]'); if(b) showTab(b.id.replace('tab-','')); };
 
@@ -2848,7 +3275,7 @@ function init(){
       CUSTOM = CUSTOM.filter(c => c.id !== d.dataset.del); saveCustom(CUSTOM); closeDetail(); refreshAll(); toast('Aturan dihapus'); }
   });
   $('#scrim').addEventListener('click', e => { if(e.target.id==='scrim' || e.target.id==='close') closeDetail(); });
-  document.addEventListener('keydown', e => { if(e.key==='Escape' && !$('#scrim').hidden) closeDetail(); });
+  document.addEventListener('keydown', e => { if(e.key !== 'Escape') return; if(penampilTerbuka()) tutupPenampil(); else if(!$('#scrim').hidden) closeDetail(); });
 
   // compare
   $('#topiclist').onclick = e => { const b = e.target.closest('[data-topic]'); if(b) selectTopic(b.dataset.topic); };
