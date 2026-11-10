@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-frZ82iCmAddbu5r+Z8Eu6X/0QTUkkaVEyyYcU0q1vSk=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-D+X0ozPNKDje3ekKaOzL5lMi/5pSeeHrispwFaoFEO0=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -382,6 +382,11 @@ body.lv-buka{overflow:hidden}
   .lv-badan:not(.tunggal){grid-template-columns:260px minmax(0,1fr)}
   .lv-sisi{display:block;overflow:auto;border-right:1px solid var(--line);background:var(--surface)}
 }
+.teks-ajak{margin:-4px 0 0;font-size:14px;color:var(--muted)}
+.teks-ajak .linkish{font-weight:600;min-height:44px}
+.teks-kepala{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.teks-kepala h3{margin:0}
+nav.tabs button[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 <style>
@@ -425,7 +430,7 @@ header.top h1 span{color:var(--accent)}
       <button role="tab" id="tab-cari" aria-controls="p-cari" aria-selected="true">Cari aturan</button>
       <button role="tab" id="tab-bandingkan" aria-controls="p-bandingkan" aria-selected="false">Bandingkan ketentuan</button>
       <button role="tab" id="tab-garis-waktu" aria-controls="p-garis-waktu" aria-selected="false">Garis waktu</button>
-      <button role="tab" id="tab-teks" aria-controls="p-teks" aria-selected="false">Bandingkan teks pasal</button>
+      <button role="tab" id="tab-teks" aria-controls="p-teks" aria-selected="false" hidden>Bandingkan teks pasal</button>
       <button role="tab" id="tab-koleksi" aria-controls="p-koleksi" aria-selected="false">Tambah aturan</button>
     </nav>
   </div>
@@ -466,6 +471,7 @@ header.top h1 span{color:var(--accent)}
     <!-- BANDINGKAN -->
     <section role="tabpanel" id="p-bandingkan" aria-labelledby="tab-bandingkan" hidden>
       <p class="lead">Bandingkan isi dua aturan mana saja berdasarkan topik, atau pilih ketentuan terkurasi yang dilacak lintas versi. Tambahan ditandai hijau, yang dihapus merah.</p>
+      <p class="teks-ajak">Aturannya tidak ada di aplikasi? <button type="button" class="linkish" id="ke-teks">Bandingkan sendiri di sini</button></p>
       <div class="cmp">
         <div class="topiclist" id="topiclist"></div>
         <div style="display:grid;gap:12px;min-width:0">
@@ -489,8 +495,9 @@ header.top h1 span{color:var(--accent)}
     </section>
 
     <!-- TEKS -->
-    <section role="tabpanel" id="p-teks" aria-labelledby="tab-teks" hidden>
-      <p class="lead">Tempel bunyi pasal dari naskah resmi (JDIH, peraturan.bpk.go.id) untuk melihat perbedaan kata demi kata. Contoh di bawah adalah ringkasan Pasal 25 ayat (9) UU KUP sebelum dan sesudah UU HPP.</p>
+    <section role="tabpanel" id="p-teks" aria-labelledby="tab-bandingkan" hidden>
+      <div class="teks-kepala"><button type="button" class="btn ghost small" id="dari-teks">← Bandingkan ketentuan</button><h3>Bandingkan dua teks sendiri</h3></div>
+      <p class="lead">Untuk teks yang tidak ada di aplikasi: aturan yang belum tersedia, dua versi surat, kontrak atau klausul milik Anda, serta dokumen lain yang ingin dibandingkan kata demi kata. Contoh di bawah adalah ringkasan Pasal 25 ayat (9) UU KUP sebelum dan sesudah UU HPP.</p>
       <div class="two">
         <label><span class="label">Versi lama</span><textarea id="ta-a" rows="9"></textarea></label>
         <label><span class="label">Versi baru</span><textarea id="ta-b" rows="9"></textarea></label>
@@ -2935,11 +2942,13 @@ ${teks}`;
 const TABS = ['cari','bandingkan','garis-waktu','teks','koleksi'];
 function showTab(name){
   if(!TABS.includes(name)) name = 'cari';
-  TABS.forEach(t => { $('#tab-'+t).setAttribute('aria-selected', t===name); $('#p-'+t).hidden = t!==name; });
+  TABS.forEach(t => { $('#tab-'+t).setAttribute('aria-selected', t===name || (t==='bandingkan' && name==='teks')); $('#p-'+t).hidden = t!==name; });
   try{ history.replaceState(null,'','#'+name); }catch(e){}
   if(name === 'bandingkan') renderCompare();
 }
 
+// pembanding teks bebas dibuka dari dalam Bandingkan ketentuan (bukan tab sendiri lagi)
+document.addEventListener('click', e => { if(e.target.closest('#ke-teks')){ showTab('teks'); window.scrollTo(0,0); $('#dari-teks').focus(); } else if(e.target.closest('#dari-teks')){ showTab('bandingkan'); $('#ke-teks').focus(); } });
 /* ===== Text diff ===== */
 function runTextDiff(){
   const a = $('#ta-a').value, b = $('#ta-b').value;
