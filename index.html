@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-/IifesvLa6tkjiGaqrjthSWs+tQ8tXCWsxZVrp/z0vI=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-frZ82iCmAddbu5r+Z8Eu6X/0QTUkkaVEyyYcU0q1vSk=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -560,7 +560,7 @@ header.top h1 span{color:var(--accent)}
 
 <footer class="foot">
   <div class="wrap">
-    <div><b>Aplikasi pribadi, bukan aplikasi resmi Direktorat Jenderal Pajak atau Kementerian Keuangan.</b> Ringkasan disusun dari sumber publik dan merupakan parafrase, bukan teks resmi. Aturan bertanda <span class="pill cek">cek status</span> perlu diverifikasi status atau angkanya. Sebelum dipakai dalam SP2DK, LHP, atau keputusan, cocokkan dengan naskah di <a href="https://jdih.kemenkeu.go.id" target="_blank" rel="noopener">JDIH Kemenkeu</a>, <a href="https://www.pajak.go.id/id/peraturan" target="_blank" rel="noopener">pajak.go.id</a>, atau <a href="https://peraturan.bpk.go.id" target="_blank" rel="noopener">peraturan.bpk.go.id</a>. Sebagian naskah berasal dari hasil OCR dan bisa salah baca.</div>
+    <div><b>Aplikasi pribadi, bukan aplikasi resmi Direktorat Jenderal Pajak atau Kementerian Keuangan.</b> Ringkasan disusun dari sumber publik dan merupakan parafrase, bukan teks resmi. Aturan bertanda <span class="pill cek">cek status</span> perlu diverifikasi status atau angkanya. Sebelum digunakan, cocokkan dengan naskah di <a href="https://jdih.kemenkeu.go.id" target="_blank" rel="noopener">JDIH Kemenkeu</a>, <a href="https://www.pajak.go.id/id/peraturan" target="_blank" rel="noopener">pajak.go.id</a>, atau <a href="https://peraturan.bpk.go.id" target="_blank" rel="noopener">peraturan.bpk.go.id</a>. Sebagian naskah berasal dari hasil OCR dan bisa salah baca.</div>
   </div>
 </footer>
 
@@ -844,7 +844,8 @@ const LAMP_VENDOR = 'vendor/';
 const LAMP_PDFJS = LAMP_VENDOR + 'pdfjs-6.2.108/';
 const LAMP_BATAS = 5;            // daftar diringkas setelah 5 bagian
 const LAMP_CARI_MIN = 8;         // kotak cari muncul bila bagian lebih dari 8
-const LAMP_BUKA = new Set();     // aturan yang daftar lampirannya sedang dibuka penuh
+const LAMP_BUKA = new Set();
+const LAMP_BERTAHAP = 4 * 1048576;   // file di atas 4 MB dibuka bertahap (per halaman), tidak diunduh utuh     // aturan yang daftar lampirannya sedang dibuka penuh
 const IK_KLIP = '<svg class="ik-klip" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>';
 const IK_MATA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
 const IK_UNDUH = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
@@ -1108,20 +1109,28 @@ function muatBagian(i){
   const v = LV, b = v.L[i], wadah = v.el.querySelector(`.lv-bag[data-bag="${i}"] .lv-isi`);
   return v.muat[i] = (async () => {
     try{
-      const [isi, pdfjs] = await Promise.all([ambilLampiran(v.r, b), muatPdfjs()]);
+      // file besar (mis. lampiran 1.000 halaman): jangan diunduh utuh; pdf.js mengambil potongan yang dibutuhkan
+      // halaman yang sedang dilihat saja (HTTP Range). File kecil diunduh utuh supaya bisa langsung diunduh/digabung.
+      const url = lampUrl(v.r, b);
+      const bertahap = b.u > LAMP_BERTAHAP && !LAMP_SIMPAN.has(url);
+      const [isi, pdfjs] = await Promise.all([bertahap ? null : ambilLampiran(v.r, b), muatPdfjs()]);
       if(LV !== v) return;
-      const dok = await pdfjs.getDocument({data: isi.slice(), isEvalSupported: false, wasmUrl: new URL(LAMP_PDFJS + 'wasm/', location.href).href,
-        useSystemFonts: true, disableFontFace: false, enableXfa: false, stopAtErrors: false}).promise;
+      const opsi = {isEvalSupported: false, wasmUrl: new URL(LAMP_PDFJS + 'wasm/', location.href).href,
+        useSystemFonts: true, disableFontFace: false, enableXfa: false, stopAtErrors: false};
+      const dok = await pdfjs.getDocument(bertahap
+        ? {...opsi, url: new URL(url, location.href).href, disableAutoFetch: true, disableStream: true, rangeChunkSize: 256 * 1024, withCredentials: false}
+        : {...opsi, data: isi.slice()}).promise;
       if(LV !== v){ dok.destroy(); return; }
       v.dok[i] = dok;
+      // ukuran tiap halaman baru dibaca saat halaman itu digambar; sementara memakai ukuran halaman pertama
+      const vp1 = (await dok.getPage(1)).getViewport({scale: 1});
+      if(LV !== v) return;
       const frag = document.createDocumentFragment();
       for(let p = 1; p <= dok.numPages; p++){
-        const pg = await dok.getPage(p);
-        const vp = pg.getViewport({scale: 1});
         const c = document.createElement('div');
-        c.className = 'lv-pg'; c.dataset.bag = i; c.dataset.p = p; c.style.aspectRatio = `${vp.width} / ${vp.height}`;
+        c.className = 'lv-pg'; c.dataset.bag = i; c.dataset.p = p; c.style.aspectRatio = `${vp1.width} / ${vp1.height}`;
         c.setAttribute('role', 'img'); c.setAttribute('aria-label', `${lampJudul(b)}, halaman ${p} dari ${dok.numPages}`);
-        c._pg = pg; c._rasio = vp.height / vp.width;
+        c._dok = dok; c._no = p;
         frag.appendChild(c);
       }
       if(LV !== v) return;
@@ -1141,8 +1150,16 @@ function aturLebar(wadah){
   (wadah || LV.el).querySelectorAll('.lv-pg').forEach(c => { c.style.width = w + 'px'; });
 }
 async function gambarHalaman(c){
-  if(!LV || !c._pg || c._digambar === LV.zoom) return;
+  if(!LV || !c._dok || c._digambar === LV.zoom) return;
   c._digambar = LV.zoom;
+  if(!c._pg){
+    try{
+      c._pg = await c._dok.getPage(c._no);
+      const vp1 = c._pg.getViewport({scale: 1});
+      c.style.aspectRatio = `${vp1.width} / ${vp1.height}`;
+    }catch(e){ c._digambar = null; return; }
+    if(!LV) return;
+  }
   const tugasLama = c._tugas; if(tugasLama){ try{ tugasLama.cancel(); }catch(e){} }
   const w = c.getBoundingClientRect().width || lebarHalaman();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1163,6 +1180,7 @@ async function gambarHalaman(c){
   finally{ if(c._tugas === tugas) c._tugas = null; }
 }
 function lepasHalaman(c){
+  if(c._pg){ try{ c._pg.cleanup(); }catch(e){} }
   if(c._tugas){ try{ c._tugas.cancel(); }catch(e){} c._tugas = null; }
   const k = c.querySelector('canvas'); if(k){ k.width = k.height = 0; k.remove(); }
   c.classList.remove('siap'); c._digambar = null;
