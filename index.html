@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-D+X0ozPNKDje3ekKaOzL5lMi/5pSeeHrispwFaoFEO0=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-SnQp2u0xqofWQdwZDtSLAslO7NxzF9musR06p3ePsVw=' 'sha256-A15tSfy5ckRt7Lp+M7GMBgagOtgsU93Kvi8vI09l/e4=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -2382,7 +2382,7 @@ function blokJelaskan(ia, ib, kw){
   const k = kunciBanding(ia, ib, kw), ada = BANDING[k];
   const bisa = AI.sample && !AI.ditolak;
   return `<div class="ai panel-sub"><div class="resultmeta"><h3>Penjelasan perbedaan${kw ? ` tentang "${esc(kw)}"` : ''}</h3>${bisa ? `<button class="btn small" data-jelaskan="${esc(k)}">${ada ? 'Buat ulang' : `Jelaskan dengan ${esc(namaAI())}`}</button>` : ''}</div>
-    <div id="ai-banding" class="md-out">${ada ? mdLite(ada.teks) + `<p class="chain">Dibuat ${esc(ada.oleh || 'Claude')} dari naskah, ${esc(fmtTgl(ada.dibuat))}. Cocokkan dengan naskah resmi sebelum dikutip.</p>` : (bisa ? `<p class="chain">${esc(namaAI())} akan membaca bagian-bagian di atas dari kedua aturan, lalu menjelaskan apa yang berubah, yang baru, dan yang tidak ada lagi.</p>` : `<p class="chain">${AI.android ? 'Penjelasan otomatis memerlukan API key AI. Atur di tab Data &amp; AI.' : 'Penjelasan otomatis dengan AI saat ini hanya tersedia di aplikasi Android.'}</p>`)}</div></div>`;
+    <div id="ai-banding" class="md-out">${ada ? mdLite(ada.teks) + `<p class="chain">Penjelasan dibuat ${esc(labelAI(ada.oleh))} dari dokumen asli, cocokkan sebelum dikutip.</p>` : (bisa ? `<p class="chain">${esc(namaAI())} akan membaca bagian-bagian di atas dari kedua aturan, lalu menjelaskan apa yang berubah, yang baru, dan yang tidak ada lagi.</p>` : `<p class="chain">${AI.android ? 'Penjelasan otomatis memerlukan API key AI. Atur di tab Data &amp; AI.' : 'Penjelasan otomatis dengan AI saat ini hanya tersedia di aplikasi Android.'}</p>`)}</div></div>`;
 }
 /* ===== Perbandingan bebas yang dikurasi AI =====
    AI memilah bagian naskah lalu mengembalikan JSON berisi beberapa aspek. Setiap kutipan dicocokkan ulang
@@ -2602,8 +2602,8 @@ function blokKurasi(ia, ib, kw, keterangan){
     const ck = x.cakupan, ckTeks = ck ? [['a', x.a], ['b', x.b]].map(([s, id]) => `${ck[s].kirim} dari ${ck[s].total} bagian ${esc(cite(BYID[id]))}`).join(' dan ') : '';
     const tak = ck ? [...ck.a.lewat, ...ck.b.lewat].length : 0;
     return `<div class="kurasi" id="kurasi">
-      ${x.siap && x.saring ? `<p class="sub">Disaring dari perbandingan siap pakai: <b>${x.saring.cocok} dari ${x.saring.total} aspek</b> memuat “${esc(x.kw)}” · disusun ${esc(x.oleh || 'AI')} untuk isi keseluruhan kedua aturan, bukan khusus topik ini · ${esc(fmtTgl(x.dibuat))}</p>`
-        : `<p class="sub">Disusun ${esc(x.oleh || 'AI')} dari naskah · ${x.aspek.length} aspek · ${esc(fmtTgl(x.dibuat))}${x.siap ? ' · disiapkan bersama pembaruan data' : ''}</p>`}
+      ${x.siap && x.saring ? `<p class="sub">Disaring dari perbandingan siap pakai: <b>${x.saring.cocok} dari ${x.saring.total} aspek</b> memuat “${esc(x.kw)}” · disusun ${esc(labelAI(x.oleh))} dari dokumen asli untuk isi keseluruhan kedua aturan, bukan khusus topik ini; cocokkan sebelum dikutip</p>`
+        : `<p class="sub">Perbandingan dibuat ${esc(labelAI(x.oleh))} dari dokumen asli, cocokkan sebelum dikutip · ${x.aspek.length} aspek${x.siap ? ' · disiapkan bersama pembaruan data' : ''}</p>`}
       <div class="ring">${ring}${ragu ? `<span class="stat cek">${ragu} perlu diperiksa</span>` : ''}</div>
       ${blokCakupan(ia, ib, kw, x)}
       ${ck ? `<p class="chain" style="margin:0">AI membaca ${ckTeks}${tak ? `. <b>${tak} bagian belum dibaca</b> karena batas panjang: ${esc([...ck.a.lewat, ...ck.b.lewat].slice(0, 8).join(', '))}${tak > 8 ? ', …' : ''}` : '; semua bagian yang relevan sudah dibaca utuh'}.</p>` : ''}
@@ -2779,7 +2779,7 @@ ${teksB.teks || '(tidak ada bagian yang relevan)'}`;
   await mintaClaude(prompt, el, async text => {
     const rec = {kunci:k, a:ia, b:ib, kw, teks:text, dibuat:new Date().toISOString(), oleh:namaAI()};
     BANDING[k] = rec; saveJSON(BAND_KEY, BANDING); await simpanDb('banding', k, rec);
-    el.insertAdjacentHTML('beforeend', `<p class="chain">Tersimpan. Cocokkan dengan naskah resmi sebelum dikutip.</p>`);
+    el.insertAdjacentHTML('beforeend', `<p class="chain">Penjelasan dibuat ${esc(labelAI(rec.oleh))} dari dokumen asli, cocokkan sebelum dikutip.</p>`);
   });
 }
 // Kata pencarian hanya dibawa sebagai topik perbandingan bila memang berupa topik (mis. "SP2DK"), bukan nomor aturan
@@ -2836,7 +2836,7 @@ function blokRingkasan(r){
   const bisa = AI.sample && !AI.ditolak && NASKAH[r.id];
   let isi = '';
   if(r.ringkasan) isi += `<p style="margin:0">${esc(r.ringkasan)}</p>`;
-  if(ai) isi += `<div class="md-out" id="ai-ring">${mdLite(ai.teks)}</div><p class="chain">Ringkasan dibuat ${esc(ai.oleh || 'Claude')} dari naskah, ${esc(fmtTgl(ai.dibuat))}. Cocokkan dengan naskah resmi sebelum dikutip.${bisa ? ' <button class="linkish" data-ringkas>Buat ulang</button>' : ''}</p>`;
+  if(ai) isi += `<div class="md-out" id="ai-ring">${mdLite(ai.teks)}</div><p class="chain">Ringkasan dibuat ${esc(labelAI(ai.oleh))} dari dokumen asli, cocokkan sebelum dikutip.${bisa ? ' <button class="linkish" data-ringkas>Buat ulang</button>' : ''}</p>`;
   else if(!r.ringkasan){
     if(bisa) isi += `<div class="md-out" id="ai-ring"><p class="chain">Belum ada ringkasan isi. ${esc(namaAI())} dapat membaca naskah aturan ini (${NASKAH[r.id].segs.length} pasal/bagian) dan menuliskan pokok-pokok isinya.</p></div><div><button class="btn small" data-ringkas>Buat ringkasan dengan ${esc(namaAI())}</button></div>`;
     else if(!NASKAH[r.id]) isi += `<p class="chain">Ringkasan isi belum ada karena naskah aturan ini belum tersedia di aplikasi. Gunakan tombol <b>Cari naskah resmi</b> di bawah.</p>`;
@@ -2910,6 +2910,8 @@ function segarkanTampilanTerbuka(){
   if(DETAIL_ID && !$('#scrim').hidden){ const sc = $('#drawer').scrollTop; openDetail(DETAIL_ID); $('#drawer').scrollTop = sc; }
   if(CUR.topic === BEBAS && !$('#p-bandingkan').hidden) renderCompare();
 }
+// 'MiMo (mimo-v2.6-flash)' -> 'AI (mimo-v2.6-flash)'; 'MiMo' -> 'AI (MiMo)'; kosong -> 'AI'
+function labelAI(oleh){ const o = String(oleh || '').trim(); const m = o.match(/\(([^()]+)\)\s*$/); return m ? `AI (${m[1]})` : o ? `AI (${o})` : 'AI'; }
 async function buatRingkasan(id){
   const r = BYID[id]; if(!r || !NASKAH[id]) return;
   const {teks, terpotong} = naskahUntukPrompt(id, 90000);
