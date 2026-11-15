@@ -1,8 +1,8 @@
 /* Service worker Jejak Pajak (versi web/PWA). Kerangka aplikasi disimpan supaya bisa dibuka tanpa internet.
    index.html diambil dari jaringan lebih dulu (maks. 4 detik) supaya perbaikan aplikasi langsung sampai;
    data aturan diambil aplikasi sendiri dari /data/ (cadangan: GitHub) dan disimpan di IndexedDB, tidak lewat sini. */
-const CACHE = 'jejak-pajak-4fd99d7402';
-const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png', './plex-cond-500.woff2', './plex-cond-600.woff2', './plex-cond-700.woff2', './plex-mono-400.woff2', './plex-mono-500.woff2', './plex-mono-600.woff2', './plex-sans-400.woff2', './plex-sans-400i.woff2', './plex-sans-500.woff2', './plex-sans-600.woff2'];
+const CACHE = 'jejak-pajak-6ba6affac0';
+const INTI = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png', './tanya.js', './plex-cond-500.woff2', './plex-cond-600.woff2', './plex-cond-700.woff2', './plex-mono-400.woff2', './plex-mono-500.woff2', './plex-mono-600.woff2', './plex-sans-400.woff2', './plex-sans-400i.woff2', './plex-sans-500.woff2', './plex-sans-600.woff2'];
 self.addEventListener('install', e => {
   // cache:'reload' supaya yang disimpan benar-benar versi terbaru, bukan salinan lama di cache browser
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(INTI.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting()));
@@ -24,6 +24,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if(e.request.method !== 'GET' || u.origin !== location.origin) return;   // data GitHub dan huruf: langsung ke jaringan
   if(u.pathname.includes('/data/')) return;   // data aturan (Pages Function): langsung ke jaringan, tidak disimpan di sini
+  if(u.pathname.includes('/tanya/')) return;   // Tanya AI (Pages Function ke Worker): selalu ke jaringan
   if(u.pathname.includes('/lampiran/')) return;   // lampiran PDF (Cloudflare R2): langsung ke jaringan, cache browser biasa
   if(u.pathname.includes('/vendor/')){   // pdf.js dan pdf-lib: nama folder memuat nomor versi, jadi aman disimpan permanen
     e.respondWith(caches.open('jejak-pajak-vendor').then(c => c.match(e.request).then(r => r || fetch(e.request).then(x => { if(x.ok) c.put(e.request, x.clone()); return x; }))));
