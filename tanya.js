@@ -43,22 +43,35 @@
     'untuk dengan pada dalam oleh itu ini adalah ialah ada jika kalau bila apabila saya aku kami kita anda kamu bisa dapat sudah belum akan masih juga saja ' +
     'tersebut tentang terkait menurut aturan peraturan ketentuan tolong jelaskan jelaskanlah sebutkan mohon seperti sebagai karena maka lebih per nya lah kah ' +
     'dong ya tidak bukan boleh sama antara setelah sebelum sampai hingga terhadap bagi para hal cara jadi tadi agar supaya serta namun tetapi tapi saat ketika ' +
-    'secara sesuai berdasarkan apa saja dimaksud maksud arti pengertian berlaku sekarang terbaru baru lama bagaimanakah gimana berapakah adakah apakah').split(' '));
+    'secara sesuai berdasarkan apa saja dimaksud maksud arti pengertian berlaku sekarang terbaru baru lama bagaimanakah gimana berapakah adakah apakah ' +
+    'dibaca baca membaca detil detail rinci rinciannya step langkah langkahnya tahapan memiliki punya mempunyai kemudian lalu melalui langsung perlu ' +
+    'mana dan/atau contoh misal misalnya kasus sebuah suatu seorang ingin mau bantu tolong kira kira-kira ' +
+    'juta miliar milyar ribu rupiah setahun sebulan sehari tahun bulan sekaligus').split(' '));
   const POLA_NOMOR = /\b(uu|pp|perppu|perpu|perpres|pmk|kmk|per|kep|se|peng)\s*[-.]?\s*(?:nomor\s*|no\.?\s*)?(\d+[a-z]?)(?:\s*\/\s*pj(?:\.\d+)?)?\s*(?:\/|\s+tahun\s+|\s+)\s*(\d{4})\b|\b(\d+)\s*\/\s*(pmk|kmk)(?:\.\d+)?\s*\/\s*(\d{4})\b/gi;
 
+  // Cocokkan bentuk singkat ("PMK 164/2023", "PER 11/PJ/2025") dengan kutipan aturan di database
+  let PETA_KUTIPAN = null;
+  const kunciKutipan = t => norm(String(t)).replace(/nomor|no\.|tahun/g, ' ').replace(/[^a-z0-9]+/g, '');
+  function cariKutipan(t) {
+    if (!PETA_KUTIPAN || PETA_KUTIPAN.n !== ALL.length) { PETA_KUTIPAN = { n: ALL.length, m: new Map() }; ALL.forEach(r => PETA_KUTIPAN.m.set(kunciKutipan(cite(r)), r.id)); }
+    return PETA_KUTIPAN.m.get(kunciKutipan(t)) || null;
+  }
   function rujukanDalam(q) {
     const ids = new Set(); let m; POLA_NOMOR.lastIndex = 0;
     while ((m = POLA_NOMOR.exec(q))) {
       const teks = m[1] ? `${m[1].toUpperCase()} ${m[2]}${/^(per|se|kep|peng)$/i.test(m[1]) ? '/PJ' : ''}/${m[3]}` : `${m[4]}/${m[5].toUpperCase()}/${m[6]}`;
-      const id = (typeof resolveRef === 'function' && resolveRef(teks)) || (m[1] && resolveRef(`${m[1].toUpperCase()} ${m[2]}/${m[3]}`));
+      const id = (typeof resolveRef === 'function' && resolveRef(teks)) || (m[1] && resolveRef(`${m[1].toUpperCase()} ${m[2]}/${m[3]}`)) || cariKutipan(teks) || (m[1] && cariKutipan(`${m[1]} ${m[2]}/${m[3]}`));
       if (id) ids.add(id);
     }
     return ids;
   }
   function istilahDari(q) {
     const bersih = norm(q).replace(POLA_NOMOR, ' ').replace(/[^a-z0-9%\s]/g, ' ');
-    const kata = bersih.split(/\s+/).map(w => w.replace(/(nya|kah|lah)$/, '')).filter(w => w && !KATA_UMUM.has(w) && (w.length >= 3 || /^\d+$/.test(w)));
-    const unik = [...new Set(kata)].slice(0, 12);
+    const semua = bersih.split(/\s+/).filter(Boolean);
+    const AWAL_ANGKA = /^(pph|pasal|ppn|ayat|huruf|pmk|pp|uu|per|se|kep)$/;
+    const kata = semua.map(w => w.replace(/(nya|kah|lah)$/, ''))
+      .filter((w, i) => w && !KATA_UMUM.has(w) && (/^\d+$/.test(w) ? AWAL_ANGKA.test(semua[i - 1] || '') : w.length >= 3));
+    const unik = [...new Set(kata)].slice(0, 16);
     // frasa dua kata yang berdampingan memberi bobot tambahan (mis. "lebih bayar", "kuasa wajib")
     const frasa = [];
     for (let i = 0; i < kata.length - 1; i++) frasa.push(kata[i] + ' ' + kata[i + 1]);
@@ -74,12 +87,24 @@
     bayar: ['bayar', 'pembayaran'], lapor: ['lapor', 'pelaporan', 'disampaikan'], restitusi: ['restitusi', 'pengembalian pendahuluan', 'kelebihan pembayaran'],
   };
   SINGKATAN.telat = ['telat', 'terlambat', 'jangka waktu', 'tidak disampaikan'];
+  Object.assign(SINGKATAN, {
+    omset: ['omset', 'omzet', 'peredaran bruto'], omzet: ['omzet', 'omset', 'peredaran bruto'],
+    marketplace: ['marketplace', 'lokapasar', 'perdagangan melalui sistem elektronik', 'pmse', 'penyelenggara sistem elektronik'],
+    online: ['online', 'daring', 'sistem elektronik', 'pmse'], ecommerce: ['perdagangan melalui sistem elektronik', 'pmse', 'lokapasar'],
+    menjual: ['menjual', 'penjualan', 'penyerahan'], jualan: ['penjualan', 'penyerahan'], dagang: ['perdagangan', 'pedagang'],
+    gaji: ['gaji', 'penghasilan sehubungan dengan pekerjaan'], karyawan: ['karyawan', 'pegawai'],
+  });
+  // Kata yang menandai pertanyaan perpajakan. Bila ada, pertanyaan panjang berisi banyak kata cerita tetap diproses.
+  const JANGKAR = new Set(('pajak perpajakan pph ppn ppnbm spt npwp nitku nik pkp faktur efaktur bupot omset omzet peredaran umkm restitusi sp2dk ' +
+    'pemeriksaan keberatan banding gugatan sanksi denda bunga tarif coretax djp kpp meterai pbb bphtb natura tunjangan penghasilan dividen royalti ' +
+    'pemotongan pemungutan potong pungut setor penyetoran lapor pelaporan kup ptkp skp skpkb skplb stp lhp dpp ' +
+    'pmse pembukuan pencatatan').split(' '));
   const altIstilah = w => SINGKATAN[w] || ((typeof SYNONYMS !== 'undefined' && SYNONYMS[w]) ? SYNONYMS[w] : [w]);
 
   // Imbuhan sederhana: pertanyaan memakai kata kerja ("menyampaikan", "menghitung"), naskah memakai kata benda
   // ("penyampaian", "penghitungan"). Kata dipangkas ke kemungkinan kata dasarnya, lalu dicocokkan dengan imbuhan apa pun.
   function akarKata(w) {
-    if (w.length < 6 || /\d/.test(w)) return [];
+    if (w.length < 6 || /[\d\s]/.test(w)) return [];
     const hasil = new Set();
     const pre = [[/^meny(?=[aiueo])/, 's'], [/^peny(?=[aiueo])/, 's'], [/^meng(?=[aiueo])/, ['k', '']], [/^peng(?=[aiueo])/, ['k', '']],
       [/^meng/, ''], [/^peng/, ''], [/^mem(?=[aiueo])/, 'p'], [/^pem(?=[aiueo])/, 'p'], [/^mem/, ''], [/^pem/, ''],
@@ -128,10 +153,22 @@
     return (s > 0 ? '… ' : '') + teks.slice(s, e).trim() + (e < teks.length ? ' …' : '');
   }
 
-  function cariPotongan(q) {
-    const { kata, frasa } = istilahDari(q);
+  function cariPotongan(q, ekstra) {
+    let { kata, frasa } = istilahDari(q);
     const rujuk = rujukanDalam(q);
-    if (!kata.length && !rujuk.size) return { potongan: [], kata };
+    // Saran dari tahap kata kunci AI: hanya aturan yang benar-benar ada di database yang dipakai.
+    const saran = new Set();
+    if (ekstra) {
+      (ekstra.aturan || []).forEach(a => {
+        const t = String(a), ids = rujukanDalam(t);
+        if (ids.size) ids.forEach(id => saran.add(id)); else { const id = resolveRef(t) || cariKutipan(t); if (id) saran.add(id); }
+      });
+      rujuk.forEach(id => saran.delete(id));
+      const tambahan = (ekstra.kata_kunci || []).map(x => norm(String(x)).replace(/[^a-z0-9%\s]/g, ' ').replace(/\s+/g, ' ').trim())
+        .filter(x => x.length >= 3 && !KATA_UMUM.has(x));
+      kata = [...new Set([...tambahan, ...kata])].slice(0, 22);
+    }
+    if (!kata.length && !rujuk.size && !saran.size) return { potongan: [], kata };
     const grup = kata.map(w => ({ w, re: regexIstilah(w), polos: polosIstilah(w) }));
     // frasa dua kata, termasuk bentuk panjangnya ("spt masa" → "surat pemberitahuan masa")
     const reFrasa = frasa.map(f => {
@@ -150,10 +187,12 @@
       g.df = df; g.bobot = df ? Math.log(1 + nDok / df) : 0;
     });
     const aktif = grup.filter(g => g.df > 0);
-    if (!aktif.length && !rujuk.size) return { potongan: [], kata };
+    if (!aktif.length && !rujuk.size && !saran.size) return { potongan: [], kata };
     // Bobot seluruh istilah pertanyaan; istilah yang tidak ada di database sama sekali dihitung bobot maksimal,
     // supaya pertanyaan di luar topik ("resep nasi goreng") tidak lolos hanya karena satu kata kebetulan cocok.
     const bobotSemua = grup.reduce((t, g) => t + (g.df ? g.bobot : Math.log(1 + nDok)), 0) || 1;
+    const bobotAktif = aktif.reduce((t, g) => t + g.bobot, 0) || 1;
+    const adaJangkar = !!ekstra || kata.some(w => JANGKAR.has(w));
 
     // 2) nilai tiap aturan
     const kandidat = [];
@@ -164,14 +203,15 @@
         const diKepala = g.re.some(a => matchAlt(r._head, a));
         const diIdx = diKepala || g.re.some(a => matchAlt(r._idx, a));
         const diIsi = !diIdx && full && g.polos.some(a => full.includes(a)) && g.re.some(a => matchAlt(full, a));
-        if (diKepala) { skor += g.bobot * 3; cocok++; } else if (diIdx) { skor += g.bobot * 1.6; cocok++; } else if (diIsi) { skor += g.bobot; cocok++; }
+        if (diKepala) { skor += g.bobot * 3; cocok++; } else if (diIdx) { skor += g.bobot * 1.6; cocok++; } else if (diIsi) { skor += g.bobot * 0.35; cocok++; }
       }
-      const dirujuk = rujuk.has(r.id);
-      if (!cocok && !dirujuk) continue;
+      const dirujuk = rujuk.has(r.id), disarankan = saran.has(r.id);
+      if (!cocok && !dirujuk && !disarankan) continue;
       skor *= 0.5 + cocok / Math.max(1, aktif.length);
       skor += ({ berlaku: 1.2, diubah: 0.5, belum: 0.2, dicabut: -1.2 })[r.status] || 0;
       skor += Math.max(0, Math.min(1, ((+r.th || 1983) - 1983) / 43)) * 0.8;
       if (dirujuk) skor += 100;
+      if (disarankan) skor += 30;
       kandidat.push({ r, skor });
     }
     kandidat.sort((a, b) => b.skor - a.skor);
@@ -196,30 +236,46 @@
           if (c) { cocok++; liput += g.bobot; s += g.bobot * (1 + Math.log(c)); if (g.bobot > bobotTerbaik) { bobotTerbaik = g.bobot; kunciTerbaik = g.w; } }
         }
         for (const f of reFrasa) if (f.re.some(a => matchAlt(b.n, a))) s += 3;
-        const dirujuk = rujuk.has(r.id);
-        if (!cocok && !(dirujuk && b.ringkasan)) continue;
+        const dirujuk = rujuk.has(r.id), disarankan = saran.has(r.id);
+        if (!cocok && !((dirujuk || disarankan) && b.ringkasan)) continue;
         s *= 0.4 + cocok / Math.max(1, aktif.length);
         if (b.ringkasan) s *= 0.9;
         if (b.t.length < 120) s *= 0.6;   // potongan sangat pendek (judul bab, dsb.) jarang menjawab
         if (!dirujuk) s *= ({ dicabut: 0.55, diubah: 0.85 })[r.status] || 1;   // utamakan aturan yang masih berlaku
-        s += 2.5 * skorAturan / skorAturanMaks;
+        const panjang = aktif.length >= 5;
+        if (panjang && /^(Pasal I › )?Pasal 1\b(?! *\d)/.test(String(b.l || ''))) s *= 0.5;   // pasal definisi memuat banyak istilah tapi jarang menjawab
+        s += (panjang ? 5 : 2.5) * ((dirujuk || disarankan) ? 1 : skorAturan / skorAturanMaks);
         if (dirujuk) s += 6;
-        calon.push({ r, l: b.l, t: b.t, pos, s, kunci: kunciTerbaik, liputan: liput / bobotSemua, dirujuk });
+        if (disarankan) s += 3;
+        else if (saran.size && !dirujuk) s *= 0.7;   // ada saran aturan yang terverifikasi: aturan lain diberi bobot lebih kecil
+        calon.push({ r, l: b.l, t: b.t, pos, s, kunci: kunciTerbaik, liputan: liput / bobotSemua, liputanA: liput / bobotAktif, dirujuk, disarankan });
       }
     }
     calon.sort((a, b) => b.s - a.s);
     // Ambang relevansi: potongan terbaik harus memuat istilah yang mewakili ≥50% bobot pertanyaan
     // (kecuali pengguna menyebut nomor aturan yang ada). Di bawah itu pertanyaan tidak dikirim, jatah tidak terpakai.
+    // Pertanyaan perpajakan (ada kata jangkar) cukup ≥30% dari istilah yang dikenal database, supaya pertanyaan
+    // skenario panjang ("WP jual skincare impor lewat marketplace…") tetap diproses.
     const liputanTerbaik = calon.reduce((m, c) => Math.max(m, c.liputan), 0);
-    if (!rujuk.size && liputanTerbaik < AMBANG) return { potongan: [], kata, liputan: liputanTerbaik };
+    const liputanATerbaik = calon.reduce((m, c) => Math.max(m, c.liputanA), 0);
+    const lolos = rujuk.size || saran.size || (adaJangkar ? liputanATerbaik >= 0.3 : liputanTerbaik >= AMBANG);
+    if (!lolos) return { potongan: [], kata, liputan: liputanTerbaik };
 
     // 4) pilih maks. 6 potongan, maks. 2 per aturan (4 bila aturannya disebut), total ≤ 15.000 huruf
     const dipilih = [], perAturan = {};
     let total = 0;
+    // Aturan yang disarankan AI dan terbukti ada di database mendapat jatah tempat (maks. 4, satu potongan terbaik masing-masing),
+    // sisanya diisi menurut nilai. Dengan begitu aturan inti tidak tergeser aturan lain yang kebetulan memuat istilah sama.
+    const cadangan = [], sudah = new Set();
     for (const c of calon) {
+      if (cadangan.length >= 4) break;
+      if (c.disarankan && !sudah.has(c.r.id) && c.r.status !== 'dicabut') { cadangan.push(c); sudah.add(c.r.id); }
+    }
+    const urutan = [...cadangan, ...calon.filter(c => !cadangan.includes(c))];
+    for (const c of urutan) {
       if (dipilih.length >= MAKS_POTONGAN) break;
       if ((perAturan[c.r.id] || 0) >= (c.dirujuk ? 4 : MAKS_PER_ATURAN)) continue;
-      if (c.liputan < 0.15 && !c.dirujuk) continue;
+      if (c.liputanA < 0.15 && !c.dirujuk && !c.disarankan) continue;
       const teks = jendela(c.t.replace(/[ \t]+/g, ' ').trim(), Math.max(0, c.pos), MAKS_TEKS);
       if (total + teks.length > MAKS_TOTAL) continue;
       total += teks.length; perAturan[c.r.id] = (perAturan[c.r.id] || 0) + 1;
@@ -352,8 +408,28 @@
     }
     if (NASKAH_ST.status === 'memuat') { toast('Data naskah masih dimuat. Coba lagi sebentar.'); return; }
 
-    const { potongan } = cariPotongan(q);
-    if (!potongan.length) {
+    // Pertanyaan kasus/bebas seputar pajak (≥5 kata bermakna, tanpa nomor aturan): minta AI menerjemahkan dulu ke istilah peraturan (1 jatah untuk kedua tahap).
+    let ekstra = null;
+    const ist = istilahDari(q);
+    if ((q.length >= 100 || ist.kata.length >= 5) && ist.kata.some(w => JANGKAR.has(w)) && !rujukanDalam(q).size) {
+      el.kirim.disabled = true;
+      tampilHasil(q, '', [], '', 'Menerjemahkan pertanyaan ke istilah peraturan…');
+      try {
+        const r = await fetch(ALAMAT + '/kunci', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Perangkat': PERANGKAT }, body: JSON.stringify({ pertanyaan: q }) });
+        const d = await r.json().catch(() => ({}));
+        if (d.sisaPerangkat != null) ST.sisa = d.sisaPerangkat;
+        if (d.sisaGlobal != null) ST.sisaGlobal = d.sisaGlobal;
+        if (d.kode === 'kuota_global') ST.sisaGlobal = 0;
+        tampilKuota();
+        if (!r.ok) { el.kirim.disabled = false; tampilHasil(q, '', [], esc(d.pesan || `Layanan tanya sedang tidak tersedia (kode ${r.status}). Coba lagi nanti.`)); return; }
+        ekstra = d;
+      } catch (e) {
+        el.kirim.disabled = false; tampilHasil(q, '', [], 'Tidak bisa terhubung ke layanan tanya. Periksa internet, lalu coba lagi.'); return;
+      }
+    }
+
+    const { potongan } = cariPotongan(q, ekstra);
+    if (!potongan.length && !ekstra) {
       tampilHasil(q, '', [], 'Tidak ditemukan pasal yang cocok dengan pertanyaan ini di database, jadi pertanyaan tidak dikirim ke AI dan jatah tidak terpakai. Coba kata kunci yang lebih spesifik, misalnya istilah atau nomor aturannya.');
       return;
     }
@@ -366,7 +442,7 @@
       const res = await fetch(ALAMAT + '/tanya', {
         method: 'POST', signal: ctl.signal, cache: 'no-store',
         headers: { 'Content-Type': 'application/json', 'X-Perangkat': PERANGKAT },
-        body: JSON.stringify({ pertanyaan: q, potongan: potongan.map(({ sumber, label, status, teks }) => ({ sumber, label, status, teks })) }),
+        body: JSON.stringify({ pertanyaan: q, potongan: potongan.map(({ sumber, label, status, teks }) => ({ sumber, label, status, teks })), tiket: ekstra ? ekstra.tiket : undefined }),
       });
       if (!res.ok || !res.body) {
         let d = {}; try { d = await res.json(); } catch (e) {}
@@ -438,5 +514,5 @@
   if (hashAwal === '#tanya') showTab('tanya');
 
   // untuk pengujian dari konsol: JejakTanya.cari('pertanyaan')
-  window.JejakTanya = { cari: q => cariPotongan(q).potongan, diagnosa: q => cariPotongan(q) };
+  window.JejakTanya = { cari: (q, e) => cariPotongan(q, e).potongan, diagnosa: (q, e) => cariPotongan(q, e) };
 })();
