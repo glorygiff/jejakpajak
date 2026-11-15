@@ -3,7 +3,7 @@
    dan alamat workers.dev tidak terlihat di kode halaman. Kuota, API key, dan prompt tetap diurus Worker. */
 const WORKER = 'https://jejak-tanya.jjkpjk.workers.dev';   // ganti bila alamat dari "wrangler deploy" berbeda
 const ASAL_SITUS = 'https://jejakpajak.pages.dev';         // harus tercantum di ASAL_DIIZINKAN pada wrangler.toml
-const BOLEH = { kuota: 'GET', tanya: 'POST' };
+const BOLEH = { kuota: 'GET', tanya: 'POST', kunci: 'POST' };
 
 export async function onRequest({ request, params, env }) {
   const jalur = [].concat(params.jalur || []).join('/');
