@@ -246,6 +246,7 @@
 .tq-q{margin:0;font-weight:600}
 .tq-ref{display:inline-block;min-width:1.6em;padding:0 5px;margin:0 1px;border:1px solid var(--accent);border-radius:999px;background:var(--accent-soft);color:var(--accent);font:600 11.5px/1.5 var(--f-mono);cursor:pointer;vertical-align:1px}
 .tq-awas{border-radius:var(--r);padding:9px 11px;background:var(--bad-soft);color:var(--bad);font-size:13.5px}
+.tq-catat{border-radius:var(--r);padding:9px 11px;background:var(--warn-soft);color:var(--warn);font-size:13.5px}
 .tq-sumber{display:grid;gap:0;border-top:1px solid var(--line)}
 .tq-src{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line);text-align:left;background:none;border-left:0;border-right:0;border-top:0;cursor:pointer;width:100%}
 .tq-src .tq-n{font:600 12px/1.6 var(--f-mono);color:var(--accent)}
@@ -300,14 +301,26 @@
     } catch (e) {}
   }
 
-  function htmlSumber(pot, q) {
-    const awas = pot.map((p, i) => ({ p, i, r: BYID[p.id] })).filter(x => x.r && (x.r.status === 'dicabut' || x.r.status === 'diubah'));
-    return `${awas.length ? `<div class="tq-awas">Sebagian dasar yang dibaca sudah tidak berlaku penuh: ${awas.map(x => `[${x.i + 1}] ${esc(cite(x.r))} ${esc(STATUS[x.r.status].toLowerCase())}`).join('; ')}. Periksa aturan penggantinya.</div>` : ''}
-      <div style="display:grid;gap:6px"><span class="label">Dasar yang dibaca AI (ketuk untuk membuka naskah)</span>
+  function htmlSumber(pot, adaJawaban) {
+    // Catatan status digabung per aturan (satu aturan bisa muncul di dua potongan) dan hanya tampil bila ada jawaban.
+    const perAturan = new Map();
+    pot.forEach((p, i) => { const r = BYID[p.id]; if (r && (r.status === 'dicabut' || r.status === 'diubah')) { if (!perAturan.has(r.id)) perAturan.set(r.id, { r, no: [] }); perAturan.get(r.id).no.push(i + 1); } });
+    const oleh = ids => (ids || []).map(id => BYID[id] ? cite(BYID[id]) : id).join(', ');
+    const sebut = (x, kata, ids) => `${x.no.map(n => `[${n}]`).join('')} ${esc(cite(x.r))}${ids && ids.length ? ` (${kata} oleh ${esc(oleh(ids))})` : ''}`;
+    const cabut = [...perAturan.values()].filter(x => x.r.status === 'dicabut').map(x => sebut(x, 'dicabut', x.r._dicabutOleh));
+    const ubah = [...perAturan.values()].filter(x => x.r.status === 'diubah').map(x => sebut(x, 'diubah', x.r._diubahOleh));
+    const catatan = !adaJawaban ? '' : (cabut.length ? `<div class="tq-awas">${cabut.length === 1
+        ? `Dasar ${cabut[0]} sudah dicabut, jadi tidak bisa dipakai sebagai dasar saat ini. Buka aturan penggantinya.`
+        : `Beberapa dasar sudah dicabut, jadi tidak bisa dipakai sebagai dasar saat ini: ${cabut.join('; ')}. Buka aturan penggantinya.`}</div>` : '')
+      + (ubah.length ? `<div class="tq-catat">${ubah.length === 1
+        ? `Catatan: ${ubah[0]} pernah diubah. Bunyi pasal yang dikutip mungkin sudah berbeda, periksa versi terbarunya.`
+        : `Catatan: beberapa dasar pernah diubah, bunyi pasalnya mungkin sudah berbeda: ${ubah.join('; ')}. Periksa versi terbarunya.`}</div>` : '');
+    return `${catatan}
+      <div style="display:grid;gap:6px"><span class="label">${adaJawaban ? 'Dasar yang dibaca AI' : 'Pasal yang ditemukan di database'} (ketuk untuk membuka naskah)</span>
       <div class="tq-sumber">${pot.map((p, i) => { const r = BYID[p.id]; return `<button type="button" class="tq-src" data-tq-buka="${i}">
         <span class="tq-n">[${i + 1}]</span><span><span class="cite">${esc(r ? cite(r) : p.sumber)}</span> <span class="tq-l">· ${esc(p.label)}</span>
         ${r ? `<span class="pill ${esc(r.status)}" style="margin-left:6px">${esc(STATUS[r.status] || r.status)}</span>` : ''}<br><span class="tq-l">${esc(r ? r.judul : '')}</span></span></button>`; }).join('')}</div></div>
-      <p class="chain" style="margin:0">Jawaban disusun AI dari potongan di atas dan bisa keliru. Cocokkan dengan naskah sebelum dipakai dalam SP2DK, LHP, atau keputusan.</p>`;
+      ${adaJawaban ? '<p class="chain" style="margin:0">Jawaban disusun AI dari potongan di atas dan bisa keliru. Cocokkan dengan naskah sebelum dipakai dalam SP2DK, LHP, atau keputusan.</p>' : ''}`;
   }
   function htmlJawaban(teks, pot) {
     return mdLite(teks).replace(/\[(\d{1,2})\]/g, (m, n) => (+n >= 1 && +n <= pot.length) ? `<button type="button" class="tq-ref" data-tq-buka="${+n - 1}" aria-label="Buka sumber ${n}">${n}</button>` : m);
@@ -319,7 +332,7 @@
       <div class="md-out" id="tq-teks">${teks ? htmlJawaban(teks, pot) : ''}${sedang ? `<p class="chain thinking">${esc(sedang)}</p>` : ''}</div>
       ${ST.jalan ? '<div><button class="btn ghost small" type="button" data-tq-stop>Hentikan</button></div>' : ''}
       ${catatan ? `<p class="chain" style="margin:0">${catatan}</p>` : ''}
-      ${pot.length ? htmlSumber(pot, q) : ''}
+      ${pot.length ? htmlSumber(pot, !!teks) : ''}
     </div>`;
   }
   function renderRiwayat() {
