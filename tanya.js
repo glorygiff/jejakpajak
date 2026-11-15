@@ -1,9 +1,10 @@
-/* Jejak Pajak — tab "Tanya AI" (versi web).
+/* Jejak Pajak — tab "Tanya AI" (versi web dan APK).
  *
  * Dimuat SETELAH skrip utama index.html dan memakai fungsi/data milik skrip itu (ALL, BYID, NASKAH, cite, mdLite, …).
  * Cukup satu baris sebelum </body>:   <script src="tanya.js"></script>
  * Permintaan dikirim ke /tanya/... di situs sendiri (Pages Function functions/tanya/[[jalur]].js), yang meneruskannya
- * ke Worker "jejak-tanya". Alamat lain bisa dipaksa dengan window.JEJAK_TANYA.
+ * ke Worker "jejak-tanya". Alamat lain bisa dipaksa dengan window.JEJAK_TANYA; APK memakainya untuk menunjuk ke
+ * https://jejakpajak.pages.dev/tanya (Pages Function yang sama, dengan izin CORS untuk alamat halaman APK).
  *
  * Alur: cari potongan pasal yang relevan di data aplikasi sendiri (maks. 6) → kirim pertanyaan + potongan ke perantara
  * → perantara memotong kuota, menyusun prompt, dan memanggil DeepSeek → jawaban dialirkan ke sini beserta rujukannya.
@@ -13,7 +14,6 @@
   'use strict';
   const ALAMAT = String(window.JEJAK_TANYA || 'tanya').trim().replace(/\/+$/, '');
   if (!ALAMAT || typeof ALL === 'undefined' || typeof NASKAH === 'undefined') return;
-  if (typeof ANDROID !== 'undefined' && ANDROID) return;   // versi APK menyusul; jangan aktif di WebView APK dulu
 
   /* ---------- Batas (harus sama atau lebih kecil dari batas di Worker) ---------- */
   const AMBANG = 0.5, MAKS_TANYA = 500, MAKS_POTONGAN = 6, MAKS_PER_ATURAN = 2, MAKS_TEKS = 2400, MAKS_TOTAL = 15000;
@@ -376,7 +376,7 @@
       <div class="tq-sumber">${pot.map((p, i) => { const r = BYID[p.id]; return `<button type="button" class="tq-src" data-tq-buka="${i}">
         <span class="tq-n">[${i + 1}]</span><span><span class="cite">${esc(r ? cite(r) : p.sumber)}</span> <span class="tq-l">· ${esc(p.label)}</span>
         ${r ? `<span class="pill ${esc(r.status)}" style="margin-left:6px">${esc(STATUS[r.status] || r.status)}</span>` : ''}<br><span class="tq-l">${esc(r ? r.judul : '')}</span></span></button>`; }).join('')}</div></div>
-      ${adaJawaban ? '<p class="chain" style="margin:0">Jawaban disusun AI dari potongan di atas dan bisa keliru. Cocokkan dengan naskah sebelum dipakai dalam SP2DK, LHP, atau keputusan.</p>' : ''}`;
+      ${adaJawaban ? '<p class="chain" style="margin:0">Jawaban disusun AI dari potongan di atas dan bisa keliru. Sebelum digunakan, cocokkan dengan naskah.</p>' : ''}`;
   }
   function htmlJawaban(teks, pot) {
     return mdLite(teks).replace(/\[(\d{1,2})\]/g, (m, n) => (+n >= 1 && +n <= pot.length) ? `<button type="button" class="tq-ref" data-tq-buka="${+n - 1}" aria-label="Buka sumber ${n}">${n}</button>` : m);
