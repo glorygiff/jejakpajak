@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-GExelMR7YYvoB8G3EFEUazJtk9DSP6zL92DcLUKdDr0=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-NIdCguWliNIE5o7hSSqqgKLhT3aS28DHRQsYRTr9JAU=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1215,6 +1215,133 @@ function perkiraanTinggi(){
   LV.el.querySelectorAll('.lv-isi').forEach(x => { if(!x.querySelector('.lv-pg')) x.style.minHeight = Math.round((+x.style.getPropertyValue('--n') || 1) * (w * 1.414 + 14)) + 'px'; });
 }
 window.addEventListener('resize', () => { if(!LV) return; clearTimeout(LV._rs); LV._rs = setTimeout(() => { if(!LV) return; aturLebar(); perkiraanTinggi(); LV.el.querySelectorAll('.lv-pg').forEach(c => { c._digambar = null; }); gambarUlangTerlihat(); }, 200); });
+
+/* --- Unduh ringkasan isi (buatan AI) sebagai PDF A4. Dibuat di perangkat dengan pdf-lib; tidak ada yang dikirim ke server. --- */
+const RPDF_GANTI = {'→':'->', '←':'<-', '↔':'<->', '⇒':'=>', '≥':'>=', '≤':'<=', '≠':'!=', '×':'x', '−':'-', '‑':'-', '‒':'-', '―':'-', '√':'akar ', '✓':'v', '✔':'v', '✗':'x', '∶':':', '′':"'", '″':'"', '‐':'-', '·':'·'};
+const RPDF_BOLEH = '–—‘’‚“”„•…€™‹›†‡ˆ˜Š š Œ œ Ž ž Ÿ ƒ ‰'.replace(/ /g, '');
+function rpdfBersih(s){
+  let o = '';
+  for(const ch of String(s == null ? '' : s).replace(/[  -  ]/g, ' ').replace(/[​-‍﻿]/g, '')){
+    if(RPDF_GANTI[ch] != null){ o += RPDF_GANTI[ch]; continue; }
+    const k = ch.codePointAt(0);
+    if((k >= 32 && k <= 126) || (k >= 161 && k <= 255) || RPDF_BOLEH.includes(ch)){ o += ch; continue; }
+    const d = ch.normalize('NFKD').replace(/[̀-ͯ]/g, '');
+    o += (d && d !== ch && /^[\x20-\x7e]+$/.test(d)) ? d : (k < 32 ? ' ' : '?');
+  }
+  return o;
+}
+function rpdfBlok(src){   // sama dengan mdLite: paragraf, butir, nomor, subjudul, baris tabel
+  const out = []; let no = 0;
+  for(const raw of String(src || '').replace(/\r/g, '').split('\n')){
+    const l = raw.trim(); let m;
+    if(!l){ no = 0; continue; }
+    if(/^\|.*\|$/.test(l)){ const c = l.slice(1, -1).split('|').map(x => x.trim()); if(c.every(x => /^:?-{2,}:?$/.test(x))) continue; out.push({t:'ul', s:c.join('  |  ')}); continue; }
+    if((m = l.match(/^[-*•]\s+(.*)/))){ out.push({t:'ul', s:m[1]}); continue; }
+    if((m = l.match(/^(\d+)[.)]\s+(.*)/))){ out.push({t:'ol', s:m[2], n:m[1]}); continue; }
+    if((m = l.match(/^#{1,4}\s+(.*)/))){ out.push({t:'h', s:m[1]}); continue; }
+    out.push({t:'p', s:l});
+  }
+  return out;
+}
+function rpdfPotong(s){   // "a **b** c" -> [{s:'a ',b:false},{s:'b',b:true},{s:' c',b:false}]
+  const out = []; let i = 0; const re = /\*\*(.+?)\*\*/g; let m;
+  const polos = t => t.replace(/`([^`]+)`/g, '$1');
+  while((m = re.exec(s))){ if(m.index > i) out.push({s:polos(s.slice(i, m.index)), b:false}); out.push({s:polos(m[1]), b:true}); i = m.index + m[0].length; }
+  if(i < s.length) out.push({s:polos(s.slice(i)), b:false});
+  return out;
+}
+async function buatPdfRingkasan(L, r, ai, opsi){
+  const {PDFDocument, StandardFonts, rgb} = L; opsi = opsi || {};
+  const doc = await PDFDocument.create();
+  const F = await doc.embedFont(StandardFonts.Helvetica), FB = await doc.embedFont(StandardFonts.HelveticaBold), FM = await doc.embedFont(StandardFonts.CourierBold);
+  const W = 595.28, H = 841.89, MX = 62, ATAS = 64, BAWAH = 74, LEBAR = W - 2 * MX;
+  const C = {teks:rgb(.10,.11,.18), redup:rgb(.36,.38,.47), biru:rgb(.11,.165,.43), emas:rgb(.95,.70,.11), emasTua:rgb(.60,.42,0), garis:rgb(.86,.85,.80)};
+  const WARNA_STATUS = {berlaku:[rgb(.88,.95,.89), rgb(.10,.42,.20)], diubah:[rgb(.99,.93,.80), rgb(.55,.36,0)], dicabut:[rgb(.98,.88,.87), rgb(.62,.13,.11)], belum:[rgb(.91,.91,.93), rgb(.30,.32,.40)]};
+  let hal = null, y = 0;
+  const halamanBaru = () => {
+    hal = doc.addPage([W, H]);
+    hal.drawText('JEJAK PAJAK', {x:MX, y:H - 40, size:8.5, font:FB, color:C.biru});
+    const kanan = rpdfBersih('Ringkasan isi  ·  ' + cite(r)); hal.drawText(kanan, {x:W - MX - F.widthOfTextAtSize(kanan, 8.5), y:H - 40, size:8.5, font:F, color:C.redup});
+    hal.drawRectangle({x:MX, y:H - 47, width:LEBAR, height:1.2, color:C.emas});
+    y = H - ATAS;
+  };
+  const perlu = t => { if(y - t < BAWAH) halamanBaru(); };
+  // susun kata menjadi baris; setiap kata membawa hurufnya sendiri (tebal/biasa)
+  const susun = (pot, size, lebar) => {
+    const baris = [[]]; let x = 0;
+    for(const p of pot){
+      const f = p.b ? FB : F;
+      for(const kata of rpdfBersih(p.s).split(/(\s+)/)){
+        if(!kata) continue;
+        if(/^\s+$/.test(kata)){ if(x > 0){ baris[baris.length - 1].push({s:' ', f, w:f.widthOfTextAtSize(' ', size), sp:true}); x += f.widthOfTextAtSize(' ', size); } continue; }
+        let sisa = kata;
+        while(sisa){
+          let w = f.widthOfTextAtSize(sisa, size);
+          if(x + w <= lebar || (x === 0 && w <= lebar)){ baris[baris.length - 1].push({s:sisa, f, w}); x += w; sisa = ''; break; }
+          if(x > 0){ const b = baris[baris.length - 1]; while(b.length && b[b.length - 1].sp) b.pop(); baris.push([]); x = 0; continue; }
+          let n = sisa.length; while(n > 1 && f.widthOfTextAtSize(sisa.slice(0, n), size) > lebar) n--;   // kata lebih lebar dari baris: potong
+          baris[baris.length - 1].push({s:sisa.slice(0, n), f, w:f.widthOfTextAtSize(sisa.slice(0, n), size)}); baris.push([]); x = 0; sisa = sisa.slice(n);
+        }
+      }
+    }
+    return baris.filter(b => b.length);
+  };
+  const tulis = (pot, o) => {
+    const size = o.size || 10.5, jarak = o.jarak || size * 1.5, x0 = MX + (o.masuk || 0), baris = susun(pot, size, LEBAR - (o.masuk || 0));
+    baris.forEach((b, i) => {
+      perlu(jarak); y -= jarak;
+      if(i === 0 && o.tanda) hal.drawText(o.tanda, {x:x0 - (o.tandaGeser || 12), y, size, font:o.tandaTebal ? FB : F, color:o.warnaTanda || C.teks});
+      let x = x0; for(const k of b){ if(!k.sp) hal.drawText(k.s, {x, y, size, font:o.font || k.f, color:o.warna || C.teks}); x += k.w; }
+    });
+    y -= (o.sesudah || 0);
+  };
+  halamanBaru();
+  // kepala: nomor aturan, judul, status
+  y -= 6; hal.drawText(rpdfBersih(cite(r)), {x:MX, y:y - 13, size:13, font:FM, color:C.emasTua}); y -= 20;
+  tulis([{s:'TENTANG', b:true}], {size:7.5, jarak:13, warna:C.redup});
+  tulis([{s:r.judul || '', b:true}], {size:16, jarak:21, warna:C.biru, sesudah:6});
+  const st = STATUS[r.status] || r.status || ''; 
+  if(st){
+    const [latar, huruf] = WARNA_STATUS[r.status] || WARNA_STATUS.belum, t = rpdfBersih(st), w = FB.widthOfTextAtSize(t, 8.5) + 14;
+    perlu(22); y -= 18; hal.drawRectangle({x:MX, y:y - 4.5, width:w, height:16, color:latar}); hal.drawText(t, {x:MX + 7, y, size:8.5, font:FB, color:huruf});
+    const th = r.th ? `Tahun ${r.th}` : ''; if(th) hal.drawText(th, {x:MX + w + 10, y, size:8.5, font:F, color:C.redup});
+    y -= 8;
+  }
+  y -= 10; perlu(30); hal.drawRectangle({x:MX, y, width:LEBAR, height:.7, color:C.garis}); y -= 6;
+  tulis([{s:'RINGKASAN ISI', b:true}], {size:8, jarak:16, warna:C.redup, sesudah:2});
+  // isi ringkasan
+  for(const b of rpdfBlok(ai.teks)){
+    const pot = rpdfPotong(b.s);
+    if(b.t === 'ul') tulis(pot, {masuk:16, tanda:'•', tandaGeser:11, sesudah:3.5});
+    else if(b.t === 'ol') tulis(pot, {masuk:18, tanda:b.n + '.', tandaGeser:16, sesudah:3.5});
+    else if(b.t === 'h') { y -= 4; tulis([{s:b.s.replace(/\*\*/g, ''), b:true}], {size:11.5, sesudah:2}); }
+    else { const judulBagian = /^\*\*[^*]+:\*\*\s*$/.test(b.s); if(judulBagian) y -= 5; tulis(pot, {sesudah:judulBagian ? 1 : 6}); }
+  }
+  y -= 8; perlu(40); hal.drawRectangle({x:MX, y, width:LEBAR, height:.7, color:C.garis}); y -= 2;
+  tulis([{s:`Ringkasan dibuat ${labelAI(ai.oleh)} dari dokumen asli, cocokkan sebelum dikutip.`, b:false}], {size:8.5, jarak:13, warna:C.redup});
+  // kaki setiap halaman
+  const hals = doc.getPages(), tgl = opsi.tanggal || new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+  hals.forEach((p, i) => {
+    p.drawRectangle({x:MX, y:52, width:LEBAR, height:.7, color:C.garis});
+    p.drawText(rpdfBersih('Bukan aplikasi resmi DJP dan Kementerian Keuangan. Ringkasan adalah alat bantu; sebelum digunakan, cocokkan dengan naskah resmi.'), {x:MX, y:40, size:7.5, font:F, color:C.redup});
+    p.drawText(rpdfBersih(`Jejak Pajak  ·  jejakpajak.pages.dev  ·  diunduh ${tgl}`), {x:MX, y:29, size:7.5, font:F, color:C.redup});
+    const n = `${i + 1} / ${hals.length}`; p.drawText(n, {x:W - MX - F.widthOfTextAtSize(n, 7.5), y:29, size:7.5, font:F, color:C.redup});
+  });
+  doc.setTitle(rpdfBersih(`Ringkasan ${cite(r)}`)); doc.setSubject(rpdfBersih(r.judul || '')); doc.setCreator('Jejak Pajak'); doc.setProducer('Jejak Pajak');
+  return doc.save();
+}
+async function unduhRingkasanPdf(id, t){
+  const r = BYID[id], ai = RINGKASAN[id] || RING_DATA[id];
+  if(!r || !ai || !ai.teks){ toast('Ringkasan belum tersedia untuk aturan ini.'); return; }
+  const pulih = tombolSibuk(t, 'Menyiapkan PDF…');
+  try{
+    const L = await muatPdfLib();
+    const isi = await buatPdfRingkasan(L, r, ai);
+    await simpanBerkas(isi, `Ringkasan-${cite(r).replace(/[^A-Za-z0-9]+/g, '-')}.pdf`);
+    if(!BERKAS) toast('Ringkasan diunduh sebagai PDF');
+  }catch(e){ toast(e.message || 'Gagal membuat PDF ringkasan'); }
+  finally{ pulih(); }
+}
 /* ===== Utilities ===== */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2841,7 +2968,7 @@ function blokRingkasan(r){
   const bisa = AI.sample && !AI.ditolak && NASKAH[r.id];
   let isi = '';
   if(r.ringkasan) isi += `<p style="margin:0">${esc(r.ringkasan)}</p>`;
-  if(ai) isi += `<div class="md-out" id="ai-ring">${mdLite(ai.teks)}</div><p class="chain">Ringkasan dibuat ${esc(labelAI(ai.oleh))} dari dokumen asli, cocokkan sebelum dikutip.${bisa ? ' <button class="linkish" data-ringkas>Buat ulang</button>' : ''}</p>`;
+  if(ai) isi += `<div class="md-out" id="ai-ring">${mdLite(ai.teks)}</div><p class="chain">Ringkasan dibuat ${esc(labelAI(ai.oleh))} dari dokumen asli, cocokkan sebelum dikutip.${bisa ? ' <button class="linkish" data-ringkas>Buat ulang</button>' : ''}</p><div><button class="btn ghost small" type="button" data-ring-pdf>Unduh ringkasan (PDF)</button></div>`;
   else if(!r.ringkasan){
     if(bisa) isi += `<div class="md-out" id="ai-ring"><p class="chain">Belum ada ringkasan isi. ${esc(namaAI())} dapat membaca naskah aturan ini (${NASKAH[r.id].segs.length} pasal/bagian) dan menuliskan pokok-pokok isinya.</p></div><div><button class="btn small" data-ringkas>Buat ringkasan dengan ${esc(namaAI())}</button></div>`;
     else if(!NASKAH[r.id]) isi += `<p class="chain">Ringkasan isi belum ada karena naskah aturan ini belum tersedia di aplikasi. Gunakan tombol <b>Cari naskah resmi</b> di bawah.</p>`;
@@ -2916,7 +3043,7 @@ function segarkanTampilanTerbuka(){
   if(CUR.topic === BEBAS && !$('#p-bandingkan').hidden) renderCompare();
 }
 // 'MiMo (mimo-v2.6-flash)' -> 'AI (mimo-v2.6-flash)'; 'MiMo' -> 'AI (MiMo)'; kosong -> 'AI'
-function labelAI(oleh){ const o = String(oleh || '').trim(); const m = o.match(/\(([^()]+)\)\s*$/); return m ? `AI (${m[1]})` : o ? `AI (${o})` : 'AI'; }
+function labelAI(oleh){ return 'oleh AI'; }   // nama model tidak ditampilkan: keterangan diseragamkan menjadi "dibuat oleh AI"
 async function buatRingkasan(id){
   const r = BYID[id]; if(!r || !NASKAH[id]) return;
   const {teks, terpotong} = naskahUntukPrompt(id, 90000);
@@ -3302,6 +3429,7 @@ function init(){
     const cr = e.target.closest('[data-cari]'); if(cr){ closeDetail(); showTab('cari'); $('#q').value = cr.dataset.cari; renderSearch(); window.scrollTo(0,0); return; }
     const bd = e.target.closest('[data-banding]'); if(bd){ const [l, b] = bd.dataset.banding.split('|'); bukaBanding(l, b, topikDariCari(l, b)); return; }
     const rk = e.target.closest('[data-ringkas]'); if(rk && DETAIL_ID){ buatRingkasan(DETAIL_ID); return; }
+    const rp = e.target.closest('[data-ring-pdf]'); if(rp && DETAIL_ID){ unduhRingkasanPdf(DETAIL_ID, rp); return; }
     const tj = e.target.closest('[data-topicjump]');
     if(tj){ const t = TOPICS.find(x=>x.id===tj.dataset.topicjump); closeDetail(); showTab('bandingkan'); CUR.topic=t.id; const i = t.versi.findIndex(v=>v.reg===tj.dataset.reg); CUR.b = Math.max(1,i); CUR.a = CUR.b-1; renderTopicList(); renderCompare(); window.scrollTo(0,0); return; }
     const d = e.target.closest('[data-del]');
