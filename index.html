@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-NIdCguWliNIE5o7hSSqqgKLhT3aS28DHRQsYRTr9JAU=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-dv0lrANluk3snaG4OeeyjPRiEs8WP3PAOWgsvWfefkE=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1661,6 +1661,7 @@ function rebuild(){
       if(c.sumber_url && !b.sumber_url) b.sumber_url = c.sumber_url;
       if(Array.isArray(c.lampiran) && c.lampiran.length) b.lampiran = c.lampiran;
       if(c.lampiran_rujuk) b.lampiran_rujuk = c.lampiran_rujuk;
+      if(Array.isArray(c.catatan_status) && c.catatan_status.length) b.catatan_status = c.catatan_status;
       if(c.status_tetap && STATUS[c.status]){ // status_manual.csv menimpa status bawaan
         b.status = c.status;
         const ket = (c.info || []).find(t => String(t).startsWith('Status:'));
@@ -3020,7 +3021,7 @@ function openDetail(id, cariNaskah){
   $('#drawer').innerHTML = `
     <button class="x" id="close" aria-label="Tutup">Tutup ✕</button>
     <div style="display:grid;gap:6px"><span class="cite" style="font-size:16px">${esc(cite(r))}</span><span class="label">Tentang</span><h2>${esc(r.judul)}</h2><div class="meta">${statePill(r)}${(r.tema||[]).map(t => `<span class="tag">${esc(themeLabel(t))}</span>`).join('')}</div></div>
-    <dl class="kv"><dt>Berlaku</dt><dd>${esc(r.berlaku||r.th)}</dd>${rels.map(([k,v]) => `<dt>${k}</dt><dd>${link(v)}</dd>`).join('')}</dl>
+    <dl class="kv"><dt>Berlaku</dt><dd>${esc(r.berlaku||r.th)}</dd>${(Array.isArray(r.catatan_status) ? r.catatan_status : []).slice(0, 3).map(c => `<dt>Catatan status</dt><dd>${esc(c)}</dd>`).join('')}${rels.map(([k,v]) => `<dt>${k}</dt><dd>${link(v)}</dd>`).join('')}</dl>
     ${blokLampiran(r)}
     ${blokRingkasan(r)}
     ${(r.isi_pokok||[]).length ? `<div class="sect"><span class="label">Isi pokok (dari susunan naskah)</span><ul class="pts">${r.isi_pokok.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
