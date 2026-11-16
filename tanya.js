@@ -330,7 +330,7 @@
       <label style="display:grid;gap:6px"><span class="label">Pertanyaan</span>
         <textarea id="tq" rows="3" maxlength="${MAKS_TANYA}" placeholder="mis. Berapa batas lebih bayar untuk restitusi dipercepat?"></textarea></label>
       <div class="tq-bar"><button class="btn" type="submit" id="tq-kirim">Tanya</button><span class="chain" id="tq-hitung">0/${MAKS_TANYA}</span><span class="chain tq-kuota" id="tq-kuota" role="status"></span></div>
-      <p class="tq-privasi">Pertanyaan dan potongan pasal dikirim ke server DeepSeek. Jangan menulis data wajib pajak seperti nama, NPWP, atau nilai transaksi.</p>
+      <p class="tq-privasi">Pertanyaan diproses oleh layanan AI di luar aplikasi ini. Jangan cantumkan nama, NPWP, atau nilai transaksi wajib pajak.</p>
     </form>
     <div class="beranda-contoh"><span class="label">Contoh</span>${CONTOH.map(c => `<button class="chip" type="button" data-tq-contoh="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <div id="tq-hasil" aria-live="polite"></div>
