@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-NhHTDwsU/grPrOHAZQCDd+M0IUuWNl1sHbF2gfWvXFM=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-/1y6v6hI8jwhJGUnzgdEc9oFfzcvAm2UuWSK6EWcKMw=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1235,7 +1235,13 @@ function rpdfBlok(src){   // sama dengan mdLite: paragraf, butir, nomor, subjudu
   for(const raw of String(src || '').replace(/\r/g, '').split('\n')){
     const l = raw.trim(); let m;
     if(!l){ no = 0; continue; }
-    if(/^\|.*\|$/.test(l)){ const c = l.slice(1, -1).split('|').map(x => x.trim()); if(c.every(x => /^:?-{2,}:?$/.test(x))) continue; out.push({t:'ul', s:c.join('  |  ')}); continue; }
+    if(/^\|.*\|$/.test(l)){   // tabel markdown: baris berurutan digabung jadi satu blok tabel
+      const c = l.slice(1, -1).split('|').map(x => x.trim()), akhir = out[out.length - 1];
+      if(c.every(x => /^:?-{2,}:?$/.test(x))){ if(akhir && akhir.t === 'tabel' && akhir.baris.length === 1) akhir.kepala = true; continue; }
+      if(akhir && akhir.t === 'tabel' && akhir.terbuka) akhir.baris.push(c); else out.push({t:'tabel', baris:[c], kepala:false, terbuka:true});
+      continue;
+    }
+    if(out.length && out[out.length - 1].t === 'tabel') out[out.length - 1].terbuka = false;
     if((m = l.match(/^[-*•]\s+(.*)/))){ out.push({t:'ul', s:m[1]}); continue; }
     if((m = l.match(/^(\d+)[.)]\s+(.*)/))){ out.push({t:'ol', s:m[2], n:m[1]}); continue; }
     if((m = l.match(/^#{1,4}\s+(.*)/))){ out.push({t:'h', s:m[1]}); continue; }
@@ -1258,7 +1264,8 @@ async function buatPdfDok(L, spek, opsi){
   const F = await doc.embedFont(StandardFonts.Helvetica), FB = await doc.embedFont(StandardFonts.HelveticaBold), FM = await doc.embedFont(StandardFonts.CourierBold);
   const W = 595.28, H = 841.89, MX = 62, ATAS = 64, BAWAH = 74, LEBAR = W - 2 * MX;
   const C = {teks:rgb(.10,.11,.18), redup:rgb(.36,.38,.47), biru:rgb(.11,.165,.43), emas:rgb(.95,.70,.11), emasTua:rgb(.60,.42,0), garis:rgb(.86,.85,.80),
-             merah:rgb(.62,.13,.11), merahMuda:rgb(.98,.88,.87), kuning:rgb(.55,.36,0), kuningMuda:rgb(.99,.93,.80)};
+             merah:rgb(.62,.13,.11), merahMuda:rgb(.98,.88,.87), kuning:rgb(.55,.36,0), kuningMuda:rgb(.99,.93,.80),
+             latarKepala:rgb(.93,.94,.97), garisTabel:rgb(.78,.79,.83)};
   const WARNA_STATUS = {berlaku:[rgb(.88,.95,.89), rgb(.10,.42,.20)], diubah:[C.kuningMuda, C.kuning], dicabut:[C.merahMuda, C.merah], belum:[rgb(.91,.91,.93), rgb(.30,.32,.40)]};
   let hal = null, y = 0;
   const halamanBaru = () => {
@@ -1299,6 +1306,42 @@ async function buatPdfDok(L, spek, opsi){
     y -= (o.sesudah || 0);
   };
   const garis = () => { y -= 10; perlu(30); hal.drawRectangle({x:MX, y, width:LEBAR, height:.7, color:C.garis}); y -= 6; };
+  // tabel: lebar kolom menurut isinya, teks dibungkus di dalam sel, baris kepala diulang di halaman berikutnya
+  const tabel = blk => {
+    const UK = 8.6, JRK = 11.6, PAD = 5, n = Math.max(...blk.baris.map(r => r.length));
+    const baris = blk.baris.map(r => { const c = r.slice(0, n); while(c.length < n) c.push(''); return c.map(x => rpdfPotong(x)); });
+    const lebarTeks = (pot, tebal) => pot.reduce((t, p) => t + (tebal || p.b ? FB : F).widthOfTextAtSize(rpdfBersih(p.s), UK), 0);
+    const kataTerpanjang = (pot, tebal) => Math.max(0, ...pot.flatMap(p => rpdfBersih(p.s).split(/\s+/).map(w => (tebal || p.b ? FB : F).widthOfTextAtSize(w, UK))));
+    const alami = [], minim = [];
+    for(let j = 0; j < n; j++){
+      alami.push(Math.min(260, Math.max(...baris.map((r, i) => lebarTeks(r[j], blk.kepala && i === 0)))) + 2 * PAD);
+      minim.push(Math.min(110, Math.max(28, ...baris.map((r, i) => kataTerpanjang(r[j], blk.kepala && i === 0)))) + 2 * PAD);
+    }
+    let lebar = minim.slice(); const sisa = LEBAR - lebar.reduce((a, b) => a + b, 0);
+    if(sisa > 0){
+      const tambah = alami.map((a, j) => Math.max(0, a - minim[j])), total = tambah.reduce((a, b) => a + b, 0);
+      lebar = lebar.map((w, j) => w + (total ? sisa * tambah[j] / total : sisa / n));
+    } else lebar = lebar.map(w => w * LEBAR / (LEBAR - sisa));
+    const isiSel = (r, kepala) => r.map((pot, j) => susun(kepala ? pot.map(p => ({...p, b:true})) : pot, UK, lebar[j] - 2 * PAD));
+    const gambarBaris = (sel, kepala) => {
+      const tinggi = Math.max(1, ...sel.map(x => x.length)) * JRK + 2 * PAD - 3;
+      if(y - tinggi < BAWAH){ halamanBaru(); if(blk.kepala && !kepala) gambarBaris(isiSel(baris[0], true), true); }
+      if(kepala) hal.drawRectangle({x:MX, y:y - tinggi, width:LEBAR, height:tinggi, color:C.latarKepala});
+      let x = MX;
+      sel.forEach((brs, j) => {
+        let yy = y - PAD - UK + 1.5;
+        for(const b of brs){ let xx = x + PAD; for(const k of b){ if(!k.sp) hal.drawText(k.s, {x:xx, y:yy, size:UK, font:k.f, color:kepala ? C.biru : C.teks}); xx += k.w; } yy -= JRK; }
+        x += lebar[j];
+      });
+      // garis tepi sel
+      hal.drawRectangle({x:MX, y:y - tinggi, width:LEBAR, height:tinggi, borderColor:C.garisTabel, borderWidth:.6});
+      x = MX; for(let j = 0; j < n - 1; j++){ x += lebar[j]; hal.drawLine({start:{x, y}, end:{x, y:y - tinggi}, thickness:.6, color:C.garisTabel}); }
+      y -= tinggi;
+    };
+    y -= 6; perlu(40);
+    baris.forEach((r, i) => gambarBaris(isiSel(r, blk.kepala && i === 0), blk.kepala && i === 0));
+    y -= 8;
+  };
   halamanBaru();
   // kepala
   y -= 6;
@@ -1319,8 +1362,9 @@ async function buatPdfDok(L, spek, opsi){
   tulis([{s:spek.bagian || '', b:true}], {size:8, jarak:16, warna:C.redup, sesudah:2});
   // isi (markdown sederhana seperti tampilan aplikasi)
   for(const b of rpdfBlok(spek.md)){
-    const pot = rpdfPotong(b.s);
-    if(b.t === 'ul') tulis(pot, {masuk:16, tanda:'•', tandaGeser:11, sesudah:3.5});
+    const pot = b.t === 'tabel' ? [] : rpdfPotong(b.s);
+    if(b.t === 'tabel') tabel(b);
+    else if(b.t === 'ul') tulis(pot, {masuk:16, tanda:'•', tandaGeser:11, sesudah:3.5});
     else if(b.t === 'ol') tulis(pot, {masuk:18, tanda:b.n + '.', tandaGeser:16, sesudah:3.5});
     else if(b.t === 'h') { y -= 4; tulis([{s:b.s.replace(/\*\*/g, ''), b:true}], {size:11.5, sesudah:2}); }
     else { const judulBagian = /^\*\*[^*]+:\*\*\s*$/.test(b.s); if(judulBagian) y -= 5; tulis(pot, {sesudah:judulBagian ? 1 : 6}); }
