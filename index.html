@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-dv0lrANluk3snaG4OeeyjPRiEs8WP3PAOWgsvWfefkE=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-nm2yqCOCXkpqKv7LoXVnY20UZr07w6cr2pW3OS83pSQ=' 'sha256-NhHTDwsU/grPrOHAZQCDd+M0IUuWNl1sHbF2gfWvXFM=' 'sha256-sx4/3vOzcez/HdjDwi0vuPOn3VKRAg2PtNyIlTJnH38=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'none'; connect-src 'self' https://raw.githubusercontent.com/glorygiff/jejak-pajak-data/main/ https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jejak Pajak</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1250,18 +1250,21 @@ function rpdfPotong(s){   // "a **b** c" -> [{s:'a ',b:false},{s:'b',b:true},{s:
   if(i < s.length) out.push({s:polos(s.slice(i)), b:false});
   return out;
 }
-async function buatPdfRingkasan(L, r, ai, opsi){
+/* Satu tata letak PDF untuk semua unduhan teks (ringkasan aturan, jawaban Tanya AI).
+   spek: {kanan, kode?, label, judul, status?, th?, bagian, md, lampiran?:[{judul, baris:[{s, tanda?, redup?}]}], kredit, kaki, judulDok, subjek} */
+async function buatPdfDok(L, spek, opsi){
   const {PDFDocument, StandardFonts, rgb} = L; opsi = opsi || {};
   const doc = await PDFDocument.create();
   const F = await doc.embedFont(StandardFonts.Helvetica), FB = await doc.embedFont(StandardFonts.HelveticaBold), FM = await doc.embedFont(StandardFonts.CourierBold);
   const W = 595.28, H = 841.89, MX = 62, ATAS = 64, BAWAH = 74, LEBAR = W - 2 * MX;
-  const C = {teks:rgb(.10,.11,.18), redup:rgb(.36,.38,.47), biru:rgb(.11,.165,.43), emas:rgb(.95,.70,.11), emasTua:rgb(.60,.42,0), garis:rgb(.86,.85,.80)};
-  const WARNA_STATUS = {berlaku:[rgb(.88,.95,.89), rgb(.10,.42,.20)], diubah:[rgb(.99,.93,.80), rgb(.55,.36,0)], dicabut:[rgb(.98,.88,.87), rgb(.62,.13,.11)], belum:[rgb(.91,.91,.93), rgb(.30,.32,.40)]};
+  const C = {teks:rgb(.10,.11,.18), redup:rgb(.36,.38,.47), biru:rgb(.11,.165,.43), emas:rgb(.95,.70,.11), emasTua:rgb(.60,.42,0), garis:rgb(.86,.85,.80),
+             merah:rgb(.62,.13,.11), merahMuda:rgb(.98,.88,.87), kuning:rgb(.55,.36,0), kuningMuda:rgb(.99,.93,.80)};
+  const WARNA_STATUS = {berlaku:[rgb(.88,.95,.89), rgb(.10,.42,.20)], diubah:[C.kuningMuda, C.kuning], dicabut:[C.merahMuda, C.merah], belum:[rgb(.91,.91,.93), rgb(.30,.32,.40)]};
   let hal = null, y = 0;
   const halamanBaru = () => {
     hal = doc.addPage([W, H]);
     hal.drawText('JEJAK PAJAK', {x:MX, y:H - 40, size:8.5, font:FB, color:C.biru});
-    const kanan = rpdfBersih('Ringkasan isi  ·  ' + cite(r)); hal.drawText(kanan, {x:W - MX - F.widthOfTextAtSize(kanan, 8.5), y:H - 40, size:8.5, font:F, color:C.redup});
+    const kanan = rpdfBersih(spek.kanan || ''); hal.drawText(kanan, {x:W - MX - F.widthOfTextAtSize(kanan, 8.5), y:H - 40, size:8.5, font:F, color:C.redup});
     hal.drawRectangle({x:MX, y:H - 47, width:LEBAR, height:1.2, color:C.emas});
     y = H - ATAS;
   };
@@ -1290,45 +1293,121 @@ async function buatPdfRingkasan(L, r, ai, opsi){
     const size = o.size || 10.5, jarak = o.jarak || size * 1.5, x0 = MX + (o.masuk || 0), baris = susun(pot, size, LEBAR - (o.masuk || 0));
     baris.forEach((b, i) => {
       perlu(jarak); y -= jarak;
-      if(i === 0 && o.tanda) hal.drawText(o.tanda, {x:x0 - (o.tandaGeser || 12), y, size, font:o.tandaTebal ? FB : F, color:o.warnaTanda || C.teks});
+      if(i === 0 && o.tanda) hal.drawText(rpdfBersih(o.tanda), {x:x0 - (o.tandaGeser || 12), y, size, font:o.tandaTebal ? FB : F, color:o.warnaTanda || C.teks});
       let x = x0; for(const k of b){ if(!k.sp) hal.drawText(k.s, {x, y, size, font:o.font || k.f, color:o.warna || C.teks}); x += k.w; }
     });
     y -= (o.sesudah || 0);
   };
+  const garis = () => { y -= 10; perlu(30); hal.drawRectangle({x:MX, y, width:LEBAR, height:.7, color:C.garis}); y -= 6; };
   halamanBaru();
-  // kepala: nomor aturan, judul, status
-  y -= 6; hal.drawText(rpdfBersih(cite(r)), {x:MX, y:y - 13, size:13, font:FM, color:C.emasTua}); y -= 20;
-  tulis([{s:'TENTANG', b:true}], {size:7.5, jarak:13, warna:C.redup});
-  tulis([{s:r.judul || '', b:true}], {size:16, jarak:21, warna:C.biru, sesudah:6});
-  const st = STATUS[r.status] || r.status || ''; 
-  if(st){
-    const [latar, huruf] = WARNA_STATUS[r.status] || WARNA_STATUS.belum, t = rpdfBersih(st), w = FB.widthOfTextAtSize(t, 8.5) + 14;
-    perlu(22); y -= 18; hal.drawRectangle({x:MX, y:y - 4.5, width:w, height:16, color:latar}); hal.drawText(t, {x:MX + 7, y, size:8.5, font:FB, color:huruf});
-    const th = r.th ? `Tahun ${r.th}` : ''; if(th) hal.drawText(th, {x:MX + w + 10, y, size:8.5, font:F, color:C.redup});
+  // kepala
+  y -= 6;
+  if(spek.kode){ hal.drawText(rpdfBersih(spek.kode), {x:MX, y:y - 13, size:13, font:FM, color:C.emasTua}); y -= 20; }
+  if(spek.label) tulis([{s:spek.label, b:true}], {size:7.5, jarak:13, warna:C.redup});
+  tulis([{s:spek.judul || '', b:true}], {size:spek.ukuranJudul || 16, jarak:(spek.ukuranJudul || 16) * 1.31, warna:C.biru, sesudah:6});
+  const st = spek.status ? (STATUS[spek.status] || spek.status) : '';
+  if(st || spek.th){
+    perlu(22); y -= 18; let x = MX;
+    if(st){
+      const [latar, huruf] = WARNA_STATUS[spek.status] || WARNA_STATUS.belum, t = rpdfBersih(st), w = FB.widthOfTextAtSize(t, 8.5) + 14;
+      hal.drawRectangle({x, y:y - 4.5, width:w, height:16, color:latar}); hal.drawText(t, {x:x + 7, y, size:8.5, font:FB, color:huruf}); x += w + 10;
+    }
+    if(spek.th) hal.drawText(rpdfBersih(spek.th), {x, y, size:8.5, font:F, color:C.redup});
     y -= 8;
   }
-  y -= 10; perlu(30); hal.drawRectangle({x:MX, y, width:LEBAR, height:.7, color:C.garis}); y -= 6;
-  tulis([{s:'RINGKASAN ISI', b:true}], {size:8, jarak:16, warna:C.redup, sesudah:2});
-  // isi ringkasan
-  for(const b of rpdfBlok(ai.teks)){
+  garis();
+  tulis([{s:spek.bagian || '', b:true}], {size:8, jarak:16, warna:C.redup, sesudah:2});
+  // isi (markdown sederhana seperti tampilan aplikasi)
+  for(const b of rpdfBlok(spek.md)){
     const pot = rpdfPotong(b.s);
     if(b.t === 'ul') tulis(pot, {masuk:16, tanda:'•', tandaGeser:11, sesudah:3.5});
     else if(b.t === 'ol') tulis(pot, {masuk:18, tanda:b.n + '.', tandaGeser:16, sesudah:3.5});
     else if(b.t === 'h') { y -= 4; tulis([{s:b.s.replace(/\*\*/g, ''), b:true}], {size:11.5, sesudah:2}); }
     else { const judulBagian = /^\*\*[^*]+:\*\*\s*$/.test(b.s); if(judulBagian) y -= 5; tulis(pot, {sesudah:judulBagian ? 1 : 6}); }
   }
+  // bagian tambahan (mis. peringatan dan daftar dasar yang dibaca AI)
+  for(const blk of spek.lampiran || []){
+    if(blk.peringatan){
+      const warna = blk.peringatan === 'merah' ? [C.merahMuda, C.merah] : [C.kuningMuda, C.kuning];
+      const baris = susun([{s:blk.teks, b:false}], 9.5, LEBAR - 20), tinggi = baris.length * 14 + 12;
+      y -= 10; perlu(tinggi + 4);
+      hal.drawRectangle({x:MX, y:y - tinggi, width:LEBAR, height:tinggi, color:warna[0]});
+      let yy = y - 6;
+      for(const b of baris){ yy -= 14; let x = MX + 10; for(const k of b){ if(!k.sp) hal.drawText(k.s, {x, y:yy + 3, size:9.5, font:k.f, color:warna[1]}); x += k.w; } }
+      y -= tinggi;
+      continue;
+    }
+    garis();
+    tulis([{s:blk.judul || '', b:true}], {size:8, jarak:16, warna:C.redup, sesudah:2});
+    for(const r of blk.baris || []){
+      tulis([{s:r.s, b:!!r.tebal}], {size:r.redup ? 8.5 : 10, jarak:r.redup ? 12.5 : 15, masuk:22, tanda:r.tanda || '', tandaGeser:22, tandaTebal:true,
+                                    warnaTanda:C.emasTua, warna:r.redup ? C.redup : C.teks, sesudah:r.redup ? 5 : 0});
+    }
+  }
   y -= 8; perlu(40); hal.drawRectangle({x:MX, y, width:LEBAR, height:.7, color:C.garis}); y -= 2;
-  tulis([{s:`Ringkasan dibuat ${labelAI(ai.oleh)} dari dokumen asli, cocokkan sebelum dikutip.`, b:false}], {size:8.5, jarak:13, warna:C.redup});
+  tulis([{s:spek.kredit || '', b:false}], {size:8.5, jarak:13, warna:C.redup});
   // kaki setiap halaman
   const hals = doc.getPages(), tgl = opsi.tanggal || new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
   hals.forEach((p, i) => {
     p.drawRectangle({x:MX, y:52, width:LEBAR, height:.7, color:C.garis});
-    p.drawText(rpdfBersih('Bukan aplikasi resmi DJP dan Kementerian Keuangan. Ringkasan adalah alat bantu; sebelum digunakan, cocokkan dengan naskah resmi.'), {x:MX, y:40, size:7.5, font:F, color:C.redup});
+    p.drawText(rpdfBersih(spek.kaki || ''), {x:MX, y:40, size:7.5, font:F, color:C.redup});
     p.drawText(rpdfBersih(`Jejak Pajak  ·  jejakpajak.pages.dev  ·  diunduh ${tgl}`), {x:MX, y:29, size:7.5, font:F, color:C.redup});
     const n = `${i + 1} / ${hals.length}`; p.drawText(n, {x:W - MX - F.widthOfTextAtSize(n, 7.5), y:29, size:7.5, font:F, color:C.redup});
   });
-  doc.setTitle(rpdfBersih(`Ringkasan ${cite(r)}`)); doc.setSubject(rpdfBersih(r.judul || '')); doc.setCreator('Jejak Pajak'); doc.setProducer('Jejak Pajak');
+  doc.setTitle(rpdfBersih(spek.judulDok || '')); doc.setSubject(rpdfBersih(spek.subjek || '')); doc.setCreator('Jejak Pajak'); doc.setProducer('Jejak Pajak');
   return doc.save();
+}
+function buatPdfRingkasan(L, r, ai, opsi){
+  return buatPdfDok(L, {
+    kanan:'Ringkasan isi  ·  ' + cite(r), kode:cite(r), label:'TENTANG', judul:r.judul || '', status:r.status, th:r.th ? `Tahun ${r.th}` : '',
+    bagian:'RINGKASAN ISI', md:ai.teks,
+    kredit:`Ringkasan dibuat ${labelAI(ai.oleh)} dari dokumen asli, cocokkan sebelum dikutip.`,
+    kaki:'Bukan aplikasi resmi DJP dan Kementerian Keuangan. Ringkasan adalah alat bantu; sebelum digunakan, cocokkan dengan naskah resmi.',
+    judulDok:`Ringkasan ${cite(r)}`, subjek:r.judul || '',
+  }, opsi);
+}
+/* Jawaban Tanya AI: pertanyaan, jawaban, peringatan dasar yang dicabut/diubah, dan daftar dasar yang dibaca AI. */
+function buatPdfJawaban(L, d, opsi){
+  const pot = d.potongan || [];
+  const oleh = ids => (ids || []).map(id => BYID[id] ? cite(BYID[id]) : id).join(', ');
+  const per = new Map();
+  pot.forEach((p, i) => { const r = BYID[p.id]; if(r && (r.status === 'dicabut' || r.status === 'diubah')){ if(!per.has(r.id)) per.set(r.id, {r, no:[]}); per.get(r.id).no.push(i + 1); } });
+  const sebut = (x, kata, ids) => `${x.no.map(n => `[${n}]`).join('')} ${cite(x.r)}${ids && ids.length ? ` (${kata} oleh ${oleh(ids)})` : ''}`;
+  const cabut = [...per.values()].filter(x => x.r.status === 'dicabut').map(x => sebut(x, 'dicabut', x.r._dicabutOleh));
+  const ubah = [...per.values()].filter(x => x.r.status === 'diubah').map(x => sebut(x, 'diubah', x.r._diubahOleh));
+  const lampiran = [];
+  if(cabut.length) lampiran.push({peringatan:'merah', teks: cabut.length === 1
+    ? `Dasar ${cabut[0]} sudah dicabut, jadi tidak bisa dipakai sebagai dasar saat ini. Buka aturan penggantinya.`
+    : `Beberapa dasar sudah dicabut, jadi tidak bisa dipakai sebagai dasar saat ini: ${cabut.join('; ')}. Buka aturan penggantinya.`});
+  if(ubah.length) lampiran.push({peringatan:'kuning', teks: ubah.length === 1
+    ? `Catatan: ${ubah[0]} pernah diubah. Bunyi pasal yang dikutip mungkin sudah berbeda, periksa versi terbarunya.`
+    : `Catatan: beberapa dasar pernah diubah, bunyi pasalnya mungkin sudah berbeda: ${ubah.join('; ')}. Periksa versi terbarunya.`});
+  if(pot.length) lampiran.push({judul:'DASAR YANG DIBACA AI', baris: pot.flatMap((p, i) => {
+    const r = BYID[p.id], st = r ? (STATUS[r.status] || r.status || '') : '';
+    return [{tanda:`[${i + 1}]`, tebal:true, s:`${r ? cite(r) : p.sumber}  ·  ${p.label || ''}${st ? `  (${st})` : ''}`}, {s:r ? r.judul : (p.sumber || ''), redup:true}];
+  })});
+  const waktu = d.waktu ? new Date(d.waktu) : null;
+  return buatPdfDok(L, {
+    kanan:'Tanya AI', label:'PERTANYAAN', judul:d.q, ukuranJudul:14,
+    th: waktu && !isNaN(waktu) ? `Ditanyakan ${waktu.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}` : '',
+    bagian:'JAWABAN', md:d.jawaban, lampiran,
+    kredit:'Jawaban dibuat oleh AI dari potongan pasal di atas dan bisa keliru. Sebelum digunakan, cocokkan dengan naskah.',
+    kaki:'Bukan aplikasi resmi DJP dan Kementerian Keuangan. Jawaban AI adalah alat bantu; sebelum digunakan, cocokkan dengan naskah resmi.',
+    judulDok:'Tanya AI: ' + String(d.q || '').slice(0, 120), subjek:'Jawaban Tanya AI Jejak Pajak',
+  }, opsi);
+}
+async function unduhJawabanPdf(d, t){
+  if(!d || !d.jawaban){ toast('Belum ada jawaban untuk diunduh.'); return; }
+  const pulih = tombolSibuk(t, 'Menyiapkan PDF…');
+  try{
+    const L = await muatPdfLib();
+    const isi = await buatPdfJawaban(L, d);
+    const kata = rpdfBersih(d.q || '').replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').slice(0, 6).join('-') || 'jawaban';
+    const tgl = new Date(d.waktu || Date.now()); const ymd = isNaN(tgl) ? '' : `-${tgl.getFullYear()}${String(tgl.getMonth() + 1).padStart(2, '0')}${String(tgl.getDate()).padStart(2, '0')}`;
+    await simpanBerkas(isi, `Tanya-AI-${kata}${ymd}.pdf`);
+    if(!BERKAS) toast('Jawaban diunduh sebagai PDF');
+  }catch(e){ toast(e.message || 'Gagal membuat PDF jawaban'); }
+  finally{ pulih(); }
 }
 async function unduhRingkasanPdf(id, t){
   const r = BYID[id], ai = RINGKASAN[id] || RING_DATA[id];
