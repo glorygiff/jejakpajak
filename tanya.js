@@ -46,7 +46,11 @@
     'secara sesuai berdasarkan apa saja dimaksud maksud arti pengertian berlaku sekarang terbaru baru lama bagaimanakah gimana berapakah adakah apakah ' +
     'dibaca baca membaca detil detail rinci rinciannya step langkah langkahnya tahapan memiliki punya mempunyai kemudian lalu melalui langsung perlu ' +
     'mana dan/atau contoh misal misalnya kasus sebuah suatu seorang ingin mau bantu tolong kira kira-kira ' +
-    'juta miliar milyar ribu rupiah setahun sebulan sehari tahun bulan sekaligus').split(' '));
+    'juta miliar milyar ribu rupiah setahun sebulan sehari tahun bulan sekaligus ' +
+    // kata umum bahasa Inggris
+    'what which who whom whose when where why how the and for are was were with from this that these those does did have has had ' +
+    'can could should would will shall may might must into onto about there their they them your you our its not any all some ' +
+    'please explain tell much many also than then just only per').split(' '));
   const POLA_NOMOR = /\b(uu|pp|perppu|perpu|perpres|pmk|kmk|per|kep|se|peng)\s*[-.]?\s*(?:nomor\s*|no\.?\s*)?(\d+[a-z]?)(?:\s*\/\s*pj(?:\.\d+)?)?\s*(?:\/|\s+tahun\s+|\s+)\s*(\d{4})\b|\b(\d+)\s*\/\s*(pmk|kmk)(?:\.\d+)?\s*\/\s*(\d{4})\b/gi;
 
   // Cocokkan bentuk singkat ("PMK 164/2023", "PER 11/PJ/2025") dengan kutipan aturan di database
@@ -95,7 +99,10 @@
     gaji: ['gaji', 'penghasilan sehubungan dengan pekerjaan'], karyawan: ['karyawan', 'pegawai'],
   });
   // Kata yang menandai pertanyaan perpajakan. Bila ada, pertanyaan panjang berisi banyak kata cerita tetap diproses.
-  const JANGKAR = new Set(('pajak perpajakan pph ppn ppnbm spt npwp nitku nik pkp faktur efaktur bupot omset omzet peredaran umkm restitusi sp2dk ' +
+  // Penanda pertanyaan pajak berbahasa asing: langsung lewat tahap kata kunci supaya diterjemahkan ke istilah peraturan.
+  const JANGKAR_ASING = new Set(('tax taxes taxation taxable taxpayer taxpayers vat gst withholding income dividend dividends royalty royalties ' +
+    'pricing deductible deduction deductions payroll refund penalty penalties invoice invoices treaty expatriate expat').split(' '));
+  const JANGKAR = new Set(([...JANGKAR_ASING].join(' ') + ' ' + 'pajak perpajakan pph ppn ppnbm spt npwp nitku nik pkp faktur efaktur bupot omset omzet peredaran umkm restitusi sp2dk ' +
     'pemeriksaan keberatan banding gugatan sanksi denda bunga tarif coretax djp kpp meterai pbb bphtb natura tunjangan penghasilan dividen royalti ' +
     'pemotongan pemungutan potong pungut setor penyetoran lapor pelaporan kup ptkp skp skpkb skplb stp lhp dpp ' +
     'pmse pembukuan pencatatan').split(' '));
@@ -411,7 +418,8 @@
     // Pertanyaan kasus/bebas seputar pajak (≥5 kata bermakna, tanpa nomor aturan): minta AI menerjemahkan dulu ke istilah peraturan (1 jatah untuk kedua tahap).
     let ekstra = null;
     const ist = istilahDari(q);
-    if ((q.length >= 100 || ist.kata.length >= 5) && ist.kata.some(w => JANGKAR.has(w)) && !rujukanDalam(q).size) {
+    const asing = ist.kata.some(w => JANGKAR_ASING.has(w));
+    if ((q.length >= 100 || ist.kata.length >= 5 || asing) && ist.kata.some(w => JANGKAR.has(w)) && !rujukanDalam(q).size) {
       el.kirim.disabled = true;
       tampilHasil(q, '', [], '', 'Menerjemahkan pertanyaan ke istilah peraturan…');
       try {
